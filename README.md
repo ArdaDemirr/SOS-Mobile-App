@@ -18,6 +18,3 @@ Designed with a lightweight, high-contrast tactical interface, this system provi
 * **Local Storage:** `Room` Database (SQLite) for critical data, `SharedPreferences` for lightweight environment caching.
 * **Concurrency:** Kotlin Coroutines & `Dispatchers.IO` for non-blocking database operations.
 * **Background Processing:** Android Foreground Services & Broadcast Receivers for continuous sensor telemetry.
-
-## 📱 Interface Preview
-*(You can upload screenshots of your Dashboard and Dogtag screens here later by dragging and dropping them into the GitHub web editor!)*
