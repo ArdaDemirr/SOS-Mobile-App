@@ -51,6 +51,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -464,17 +465,10 @@ fun StatusMonitor() {
         }
     }
 
-    var batColor = PipGreen;
-    if(batteryLevel < 20)
-    {
-        batColor = ColorRed
-    }
-    else if (batteryLevel < 70)
-    {
-        batColor = PipAmber
-    }
-    else{
-        batColor = ColorGreen
+    val batColor = when {
+        batteryLevel < 20 -> ColorRed
+        batteryLevel < 70 -> PipAmber
+        else -> ColorGreen
     }
     val connColor = if (isConnected) ColorGreen else ColorRed
 
