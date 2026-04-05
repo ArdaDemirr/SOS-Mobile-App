@@ -43,12 +43,23 @@ interface SosApiService {
 
     @POST("api/messages/relay")
     suspend fun relayPacket(@Body msg: MessageEntity, @Header("X-Relay-Id") relayNodeId: String): Response<MessageEntity>
+
+    // 3. Inbox Sync (Fetch all messages targeted for YOU)
+    @GET("api/messages/target/{targetId}")
+    suspend fun fetchInbox(@Path("targetId") targetId: String): Response<List<MessageEntity>>
+
+    // 4. Thread Sync (Fetch the specific conversation between you and a friend)
+    @GET("api/messages/conversation/{userA}/{userB}")
+    suspend fun getConversation(
+        @Path("userA") userA: String,
+        @Path("userB") userB: String
+    ): Response<List<MessageEntity>>
 }
 
 object RetrofitInstance {
     // Tactical Connection: Using Hostname instead of volatile IP
     // Replace this with your actual IPv4 address from the command prompt
-    private const val BASE_URL = "http://192.168.1.28:8080/"
+    private const val BASE_URL = "http://192.168.1.33:8080/"
 
     val api: SosApiService by lazy {
         retrofit2.Retrofit.Builder()

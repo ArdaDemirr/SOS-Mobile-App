@@ -16,6 +16,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -32,21 +33,19 @@ fun ContactsScreen(onBack: () -> Unit, onChat: (String, String) -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val db = remember { AppDatabase.getDatabase(context).contactDao() }
+    val clipboardManager = LocalClipboardManager.current // PASTE MANAGER
 
     var contacts by remember { mutableStateOf(listOf<ContactEntity>()) }
     var showAddDialog by remember { mutableStateOf(false) }
 
-    // State for Add/Edit
     var inputUuid by remember { mutableStateOf("") }
     var inputName by remember { mutableStateOf("") }
 
-    // Load contacts from local phone storage
     LaunchedEffect(Unit) {
         contacts = withContext(Dispatchers.IO) { db.getAllContacts() }
     }
 
     Column(Modifier.fillMaxSize().background(PipBlack).systemBarsPadding()) {
-        // Header
         Row(
             Modifier.fillMaxWidth().padding(16.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -60,7 +59,6 @@ fun ContactsScreen(onBack: () -> Unit, onChat: (String, String) -> Unit) {
             }
         }
 
-        // List
         LazyColumn(Modifier.weight(1f).padding(horizontal = 16.dp)) {
             items(contacts) { contact ->
                 ContactItem(
@@ -77,7 +75,6 @@ fun ContactsScreen(onBack: () -> Unit, onChat: (String, String) -> Unit) {
             }
         }
 
-        // Back Button
         Box(Modifier.fillMaxWidth().height(60.dp).background(PipAmber).clickable { onBack() }, contentAlignment = Alignment.Center) {
             Text("< RETURN <", color = PipBlack, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
         }
@@ -101,6 +98,21 @@ fun ContactsScreen(onBack: () -> Unit, onChat: (String, String) -> Unit) {
                         label = { Text("TARGET UUID", color = PipAmber) },
                         colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = PipAmber, unfocusedBorderColor = PipAmber.copy(0.5f), focusedTextColor = PipAmber)
                     )
+                    Spacer(Modifier.height(8.dp))
+
+                    // --- NEW: PASTE BUTTON ---
+                    Button(
+                        onClick = {
+                            val pasteText = clipboardManager.getText()?.text
+                            if (!pasteText.isNullOrEmpty()) {
+                                inputUuid = pasteText
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(containerColor = PipAmber.copy(0.2f))
+                    ) {
+                        Text("PASTE FROM CLIPBOARD", color = PipAmber, fontFamily = FontFamily.Monospace)
+                    }
                 }
             },
             confirmButton = {

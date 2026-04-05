@@ -43,6 +43,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Button
 import com.example.sos.database.AppDatabase
 import com.example.sos.database.ContactEntity
 import com.example.sos.database.DogtagEntity
@@ -50,10 +52,13 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.UUID
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 
 @Composable
 fun DogtagScreen(onBack: () -> Unit) {
     val context = LocalContext.current
+    val clipboardManager = LocalClipboardManager.current // <-- PUT THIS HERE
     val scope = rememberCoroutineScope()
 
     // Access both DAOs from the database
@@ -122,6 +127,16 @@ fun DogtagScreen(onBack: () -> Unit) {
             subtitle = "NODE ID: $uuid",
             onBack = onBack
         )
+
+        // --- PASTE THE BUTTON HERE ---
+        Button(
+            onClick = { clipboardManager.setText(AnnotatedString(uuid)) },
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = PipAmber.copy(0.2f))
+        ) {
+            Text("COPY NODE ID TO CLIPBOARD", color = PipAmber, fontFamily = FontFamily.Monospace)
+        }
+        // -----------------------------
 
         Column(
             modifier = Modifier

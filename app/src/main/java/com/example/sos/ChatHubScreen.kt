@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.sos.database.AppDatabase
 import com.example.sos.database.ContactEntity
+import com.example.sos.database.MessageEntity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
@@ -38,9 +39,28 @@ fun ChatHubScreen(myUuid: String, onConversationClick: (String, String) -> Unit,
     var showNewChatDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
+        // Load Contacts
         contacts = withContext(Dispatchers.IO) { db.contactDao().getAllContacts() }
+
+        // --- FETCH SERVER INBOX ON LAUNCH ---
+        if (myUuid != "UNKNOWN_USER") {
+            withContext(Dispatchers.IO) {
+                try {
+                    val response = RetrofitInstance.api.fetchInbox(myUuid)
+                    if (response.isSuccessful) {
+                        response.body()?.forEach { msg ->
+                            msg.isSynced = true // Mark synced since it came from server
+                            db.messageDao().insertMessage(msg)
+                        }
+                    }
+                } catch (e: Exception) {
+                    // Offline, ignore.
+                }
+            }
+        }
     }
 
+    // Grouping messages into SMS threads
     val recentConversations = remember(allMessages, contacts) {
         allMessages.groupBy { if (it.senderId == myUuid) it.targetId else it.senderId }
             .mapNotNull { (partnerId, msgs) ->
@@ -52,46 +72,41 @@ fun ChatHubScreen(myUuid: String, onConversationClick: (String, String) -> Unit,
 
     Scaffold(
         floatingActionButton = {
-            FloatingActionButton(onClick = { showNewChatDialog = true }, containerColor = SosAmber) {
-                Icon(Icons.Default.Add, contentDescription = "New", tint = SosBg)
+            FloatingActionButton(onClick = { showNewChatDialog = true }, containerColor = PipAmber) {
+                Icon(Icons.Default.Add, contentDescription = "New", tint = PipBlack)
             }
         },
-        containerColor = SosBg
+        containerColor = PipBlack
     ) { paddingValues ->
-        Box(modifier = Modifier.padding(paddingValues)) {
-            SosScreenScaffold(title = "INBOX", subtitle = "SECURE MESH ACTIVE", onBack = onBack) {
-                if (recentConversations.isEmpty()) {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("NO RECENT CONVERSATIONS", color = SosAmber.copy(0.4f), fontFamily = FontFamily.Monospace)
-                    }
-                } else {
-                    LazyColumn(modifier = Modifier.fillMaxSize().padding(top = SosSpaceMd)) {
-                        items(recentConversations) { (partnerInfo, lastMsg) ->
-                            val (partnerId, partnerName) = partnerInfo
-                            val timeString = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(lastMsg.timestamp))
+        Column(modifier = Modifier.fillMaxSize().padding(paddingValues).systemBarsPadding()) {
+            ScreenHeader(title = "INBOX", subtitle = "SECURE MESH ACTIVE", onBack = onBack)
 
-                            Row(
-                                modifier = Modifier.fillMaxWidth().padding(bottom = SosSpaceSm)
-                                    .background(SosSurface, RoundedCornerShape(SosRadiusSm))
-                                    .border(1.dp, SosBorder, RoundedCornerShape(SosRadiusSm))
-                                    .clickable { onConversationClick(partnerId, partnerName) }
-                                    .padding(SosSpaceMd),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Box(
-                                    modifier = Modifier.size(40.dp).background(SosAmber.copy(0.1f), CircleShape).border(1.dp, SosAmber, CircleShape),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(partnerName.take(1).uppercase(), color = SosAmber, fontWeight = FontWeight.Bold)
-                                }
-                                Spacer(modifier = Modifier.width(SosSpaceMd))
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(partnerName, color = SosAmber, fontWeight = FontWeight.Bold, fontSize = SosFontBody)
-                                    Text(lastMsg.content, color = SosTextSecondary, fontSize = SosFontCaption, maxLines = 1)
-                                }
-                                Text(timeString, color = SosTextSecondary, fontSize = SosFontCaption)
-                            }
+            LazyColumn(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+                items(recentConversations) { (partnerInfo, lastMsg) ->
+                    val (partnerId, partnerName) = partnerInfo
+                    val timeString = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(lastMsg.timestamp))
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 8.dp)
+                            .border(1.dp, PipAmber, RoundedCornerShape(4.dp))
+                            .clickable { onConversationClick(partnerId, partnerName) }
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier.size(40.dp).background(PipAmber.copy(0.1f), CircleShape).border(1.dp, PipAmber, CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(partnerName.take(1).uppercase(), color = PipAmber, fontWeight = FontWeight.Bold)
                         }
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(partnerName, color = PipAmber, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                            Text(lastMsg.content, color = PipAmber.copy(0.7f), fontSize = 14.sp, maxLines = 1)
+                        }
+                        Text(timeString, color = PipAmber.copy(0.5f), fontSize = 10.sp)
                     }
                 }
             }
@@ -101,28 +116,33 @@ fun ChatHubScreen(myUuid: String, onConversationClick: (String, String) -> Unit,
     if (showNewChatDialog) {
         AlertDialog(
             onDismissRequest = { showNewChatDialog = false },
-            containerColor = SosSurface2,
-            title = { Text("SELECT TARGET", color = SosAmber, fontWeight = FontWeight.Bold) },
+            containerColor = PipBlack,
+            title = { Text("SELECT TARGET", color = PipAmber, fontWeight = FontWeight.Bold) },
             text = {
                 LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 300.dp)) {
                     items(contacts) { contact ->
                         Row(
-                            modifier = Modifier.fillMaxWidth().border(1.dp, SosBorder, RoundedCornerShape(SosRadiusSm))
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .border(1.dp, PipAmber.copy(0.3f), RoundedCornerShape(4.dp))
                                 .clickable {
                                     showNewChatDialog = false
                                     onConversationClick(contact.contactUuid, contact.displayName)
-                                }.padding(SosSpaceMd),
+                                }
+                                .padding(12.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(Icons.Default.Person, contentDescription = null, tint = SosAmber)
-                            Spacer(modifier = Modifier.width(SosSpaceMd))
-                            Text(contact.displayName, color = SosAmber, fontWeight = FontWeight.Bold)
+                            Icon(Icons.Default.Person, contentDescription = null, tint = PipAmber)
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(contact.displayName, color = PipAmber, fontWeight = FontWeight.Bold)
                         }
-                        Spacer(modifier = Modifier.height(SosSpaceSm))
+                        Spacer(modifier = Modifier.height(8.dp))
                     }
                 }
             },
-            confirmButton = { TextButton(onClick = { showNewChatDialog = false }) { Text("CANCEL", color = SosRed) } }
+            confirmButton = {
+                TextButton(onClick = { showNewChatDialog = false }) { Text("CANCEL", color = PipAmber) }
+            }
         )
     }
 }
