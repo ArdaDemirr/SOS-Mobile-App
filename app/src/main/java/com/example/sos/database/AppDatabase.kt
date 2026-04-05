@@ -8,7 +8,7 @@ import androidx.room.TypeConverters
 import com.example.sos.database.ContactEntity
 import com.example.sos.database.ContactDao
 
-@Database(entities = [DogtagEntity::class, ContactEntity::class], version = 3, exportSchema = false)
+@Database(entities = [DogtagEntity::class, ContactEntity::class], version = 4, exportSchema = false)
 @TypeConverters(StringListConverter::class)
 abstract class AppDatabase : RoomDatabase() {
 
