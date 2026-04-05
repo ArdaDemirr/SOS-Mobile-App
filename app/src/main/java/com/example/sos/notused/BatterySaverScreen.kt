@@ -1,12 +1,12 @@
-package com.example.sos
+package com.example.sos.notused
 
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.net.Uri
+import android.os.BatteryManager
 import android.os.PowerManager
 import android.provider.Settings
-import android.view.WindowManager
-import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -25,6 +25,12 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.sos.PipAmber
+import com.example.sos.PipBlack
+import com.example.sos.PipGreen
+import com.example.sos.PipRed
+import com.example.sos.Screen
+import com.example.sos.ScreenHeader
 
 @Composable
 fun BatterySaverScreen(onBack: () -> Unit) {
@@ -37,9 +43,9 @@ fun BatterySaverScreen(onBack: () -> Unit) {
 
     // Current battery level
     val batteryLevel = remember {
-        val intent = context.registerReceiver(null, android.content.IntentFilter(Intent.ACTION_BATTERY_CHANGED))
-        val level = intent?.getIntExtra(android.os.BatteryManager.EXTRA_LEVEL, -1) ?: -1
-        val scale = intent?.getIntExtra(android.os.BatteryManager.EXTRA_SCALE, -1) ?: -1
+        val intent = context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+        val level = intent?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: -1
+        val scale = intent?.getIntExtra(BatteryManager.EXTRA_SCALE, -1) ?: -1
         if (level >= 0 && scale > 0) (level * 100 / scale) else 0
     }
 
@@ -68,17 +74,20 @@ fun BatterySaverScreen(onBack: () -> Unit) {
 
             // Battery level display
             Box(
-                Modifier.fillMaxWidth().border(2.dp, when { batteryLevel < 20 -> PipRed; batteryLevel < 50 -> PipAmber; else -> PipGreen }, RectangleShape).padding(16.dp)
+                Modifier.fillMaxWidth().border(2.dp, when { batteryLevel < 20 -> PipRed; batteryLevel < 50 -> PipAmber; else -> PipGreen
+                }, RectangleShape).padding(16.dp)
             ) {
                 Column {
                     Text("MEVCUT PİL SEVİYESİ", color = PipAmber.copy(0.6f), fontFamily = FontFamily.Monospace, fontSize = 11.sp)
                     Row(verticalAlignment = Alignment.Bottom) {
-                        Text("$batteryLevel", color = when { batteryLevel < 20 -> PipRed; batteryLevel < 50 -> PipAmber; else -> PipGreen }, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, fontSize = 48.sp)
+                        Text("$batteryLevel", color = when { batteryLevel < 20 -> PipRed; batteryLevel < 50 -> PipAmber; else -> PipGreen
+                        }, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, fontSize = 48.sp)
                         Text("%", color = PipAmber, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, fontSize = 24.sp, modifier = Modifier.padding(bottom = 8.dp))
                     }
                     // Bar
                     Box(Modifier.fillMaxWidth().height(12.dp).border(1.dp, PipAmber.copy(0.5f))) {
-                        Box(modifier = Modifier.fillMaxHeight().fillMaxWidth(batteryLevel / 100f).background(when { batteryLevel < 20 -> PipRed; batteryLevel < 50 -> PipAmber; else -> PipGreen }))
+                        Box(modifier = Modifier.fillMaxHeight().fillMaxWidth(batteryLevel / 100f).background(when { batteryLevel < 20 -> PipRed; batteryLevel < 50 -> PipAmber; else -> PipGreen
+                        }))
                     }
                     if (batteryLevel < 20) {
                         Spacer(Modifier.height(6.dp))
@@ -90,7 +99,8 @@ fun BatterySaverScreen(onBack: () -> Unit) {
             // Battery optimization
             if (!isIgnoringBatteryOptimizations) {
                 Box(
-                    Modifier.fillMaxWidth().border(1.dp, PipAmber.copy(0.5f), RoundedCornerShape(4.dp)).background(PipAmber.copy(0.05f)).clickable {
+                    Modifier.fillMaxWidth().border(1.dp, PipAmber.copy(0.5f), RoundedCornerShape(4.dp)).background(
+                        PipAmber.copy(0.05f)).clickable {
                         val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
                             data = Uri.parse("package:${context.packageName}")
                             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -115,14 +125,16 @@ fun BatterySaverScreen(onBack: () -> Unit) {
             // Quick launch grid for critical features
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 criticalApps.take(2).forEach { (label, _) ->
-                    Box(Modifier.weight(1f).height(52.dp).border(1.dp, PipAmber.copy(0.6f), RoundedCornerShape(4.dp)).background(PipAmber.copy(0.08f)), contentAlignment = Alignment.Center) {
+                    Box(Modifier.weight(1f).height(52.dp).border(1.dp, PipAmber.copy(0.6f), RoundedCornerShape(4.dp)).background(
+                        PipAmber.copy(0.08f)), contentAlignment = Alignment.Center) {
                         Text(label, color = PipAmber, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                     }
                 }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 criticalApps.takeLast(2).forEach { (label, _) ->
-                    Box(Modifier.weight(1f).height(52.dp).border(1.dp, PipAmber.copy(0.6f), RoundedCornerShape(4.dp)).background(PipAmber.copy(0.08f)), contentAlignment = Alignment.Center) {
+                    Box(Modifier.weight(1f).height(52.dp).border(1.dp, PipAmber.copy(0.6f), RoundedCornerShape(4.dp)).background(
+                        PipAmber.copy(0.08f)), contentAlignment = Alignment.Center) {
                         Text(label, color = PipAmber, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                     }
                 }

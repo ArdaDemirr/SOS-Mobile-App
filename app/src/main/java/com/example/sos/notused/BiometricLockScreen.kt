@@ -1,7 +1,6 @@
-package com.example.sos
+package com.example.sos.notused
 
 import android.content.Context
-import android.os.Build
 import android.widget.Toast
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
@@ -24,6 +23,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
+import com.example.sos.PipAmber
+import com.example.sos.PipBlack
+import com.example.sos.PipGreen
+import com.example.sos.PipRed
+import com.example.sos.ScreenHeader
 
 @Composable
 fun BiometricLockScreen(onBack: () -> Unit) {

@@ -36,4 +36,5 @@ enum class Screen {
     BiometricLock,
     Checklist,
     Dogtag,
+    Contact,
 }

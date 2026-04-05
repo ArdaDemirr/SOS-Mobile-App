@@ -101,6 +101,8 @@ private fun buildCategories(): List<FeatureCategory> = listOf(
             MenuOption("QR SOS",             Icons.Default.Share,      false,           Screen.QRSos,            "QR ile bilgi paylaş"),
             //MenuOption("Acil Kişiler",       Icons.Default.Person,     false,           Screen.EmergencyContacts,"Kişi & telefon listesi"),
             //MenuOption("Sesli Aktivasyon",   Icons.Default.Phone,      false,           Screen.Voice,            "Elleri-serbest SOS"),
+            MenuOption("Künye",              Icons.Default.AccountBox, false, Screen.Dogtag,        "Kişisel Bilgileriniz"),
+            MenuOption("Kişiler",              Icons.Default.AccountBox, false, Screen.Contact,        "Kişileriniz"),
 
         )
     ),
@@ -156,13 +158,13 @@ private fun buildCategories(): List<FeatureCategory> = listOf(
         icon = Icons.Default.Build,
         accentColor = PipAmber,
         items = listOf(
-            MenuOption("AI Asistan",         Icons.Default.Star,       false, Screen.Ai,            "Yapay zeka yardımcı"),
+            //MenuOption("AI Asistan",         Icons.Default.Star,       false, Screen.Ai,            "Yapay zeka yardımcı"),
             MenuOption("Hayatta Kalma Hes.", Icons.Default.List,       false, Screen.SurvivalCalc,  "Su, yiyecek hesabı"),
             MenuOption("Kontrol Listesi",    Icons.Default.Check,      false, Screen.Checklist,     "Hazırlık denetimi"),
             //MenuOption("Hayatta Kalma K.",   Icons.Default.Menu,       false, Screen.Guide,         "Acil durum kılavuzu"),
             //MenuOption("Biyometrik Kilit",   Icons.Default.Lock,       false, Screen.BiometricLock, "Uygulama kilidi"),
             //MenuOption("Pil Tasarrufu",      Icons.Default.Warning,    false, Screen.BatterySaver,  "Enerji yönetimi"),
-            MenuOption("Künye",              Icons.Default.AccountBox, false, Screen.Dogtag,        "Kişisel Bilgileriniz"),
+
         )
     ),
 )
@@ -458,7 +460,7 @@ fun StatusMonitor() {
             connectionType = "GSM NET"; isConnected = true
         }
         !carrierName.isNullOrBlank() -> {
-            connectionType = "GSM YALNIZ"; isConnected = true
+            connectionType = "SADECE GSM"; isConnected = true
         }
         else -> {
             connectionType = "BAĞLANTI YOK"; isConnected = false

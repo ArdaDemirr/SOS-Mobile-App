@@ -10,7 +10,8 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
-import androidx.compose.ui.graphics.Color
+import com.example.sos.notused.BatterySaverScreen
+import com.example.sos.notused.BiometricLockScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -172,6 +173,14 @@ class MainActivity : ComponentActivity() {
                 }
                 Screen.Dogtag -> {
                     DogtagScreen(onBack = { currentScreen = Screen.Dashboard })
+                }
+                Screen.Contact -> {
+                    ContactsScreen(
+                        onBack = { currentScreen = Screen.Dashboard },
+                        onChat = { uuid, name ->
+                            // TODO: Add Chat Screen navigation
+                        }
+                    )
                 }
                 else -> {
                     DetailScreen(
