@@ -1,6 +1,7 @@
 package com.example.sos
 
 import com.example.sos.database.DogtagEntity
+import com.example.sos.database.MessageEntity
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
@@ -35,6 +36,13 @@ interface SosApiService {
         @Header("X-User-Id") requesterId: String,
         @Body waypoint: WaypointRequestPayload
     ): Response<WaypointResponsePayload>
+
+    // --- NEW MESSAGING ROUTES ---
+    @POST("api/messages")
+    suspend fun uploadMessage(@Body msg: MessageEntity): Response<MessageEntity>
+
+    @POST("api/messages/relay")
+    suspend fun relayPacket(@Body msg: MessageEntity, @Header("X-Relay-Id") relayNodeId: String): Response<MessageEntity>
 }
 
 object RetrofitInstance {

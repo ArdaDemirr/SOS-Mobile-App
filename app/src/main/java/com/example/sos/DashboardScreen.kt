@@ -114,7 +114,7 @@ private fun buildCategories(): List<FeatureCategory> = listOf(
         icon = Icons.Default.Share,
         accentColor = PipAmber,
         items = listOf(
-            //MenuOption("Mesh Ağı",           Icons.Default.Share,  isActive = false, Screen.Mesh, "Cihazdan cihaza iletişim"),
+            MenuOption("İletişim",           Icons.Default.Share,  isActive = false, Screen.ChatHub, "Cihazdan cihaza iletişim"),
             MenuOption("Radyo",              Icons.Default.Email,  false,           Screen.Rad,  "FM radyo alıcısı"),
         )
     ),

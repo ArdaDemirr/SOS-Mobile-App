@@ -37,4 +37,6 @@ enum class Screen {
     Checklist,
     Dogtag,
     Contact,
+    ChatHub,       // The Inbox Screen
+    ChatScreen   // The actual messaging screen
 }

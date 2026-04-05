@@ -5,16 +5,14 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
-import com.example.sos.database.ContactDao
-import com.example.sos.database.ContactEntity
 
-@Database(entities = [DogtagEntity::class, ContactEntity::class], version = 4, exportSchema = false)
+@Database(entities = [DogtagEntity::class, ContactEntity::class, MessageEntity::class], version = 5, exportSchema = false)
 @TypeConverters(StringListConverter::class)
 abstract class AppDatabase : RoomDatabase() {
 
     abstract fun dogtagDao(): DogtagDao
-
     abstract fun contactDao(): ContactDao
+    abstract fun messageDao(): MessageDao
 
     companion object {
         @Volatile
