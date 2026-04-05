@@ -3,12 +3,38 @@ package com.example.sos
 import com.example.sos.database.DogtagEntity
 import retrofit2.Response
 import retrofit2.http.Body
+import retrofit2.http.GET
 import retrofit2.http.POST
+import retrofit2.http.DELETE
+import retrofit2.http.PUT
+import retrofit2.http.Path
+import retrofit2.http.Header
 
 interface SosApiService {
     // This matches your @PostMapping("/api/users/sync") in UserController
     @POST("api/users/sync")
     suspend fun syncDogtag(@Body dogtag: DogtagEntity): Response<DogtagEntity>
+
+    // 2. NEW: Push Public Waypoint
+    @POST("api/waypoints")
+    suspend fun createWaypoint(@Body waypoint: WaypointRequestPayload): Response<WaypointResponsePayload>
+
+    // 3. NEW: Download Public Mesh
+    @GET("api/waypoints")
+    suspend fun getAllWaypoints(): Response<List<WaypointResponsePayload>>
+
+    @DELETE("api/waypoints/{id}")
+    suspend fun deleteWaypoint(
+        @Path("id") id: Long,
+        @Header("X-User-Id") requesterId: String
+    ): Response<Unit>
+
+    @PUT("api/waypoints/{id}")
+    suspend fun updateWaypoint(
+        @Path("id") id: Long,
+        @Header("X-User-Id") requesterId: String,
+        @Body waypoint: WaypointRequestPayload
+    ): Response<WaypointResponsePayload>
 }
 
 object RetrofitInstance {

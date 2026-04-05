@@ -12,38 +12,101 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.*
-import org.osmdroid.config.Configuration
+import com.example.sos.database.AppDatabase
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.osmdroid.events.MapEventsReceiver
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
-import org.osmdroid.views.overlay.*
+import org.osmdroid.views.overlay.MapEventsOverlay
+import org.osmdroid.views.overlay.Marker
+import org.osmdroid.views.overlay.Overlay
+import org.osmdroid.views.overlay.Polyline
 import org.osmdroid.views.overlay.infowindow.MarkerInfoWindow
-import org.osmdroid.views.overlay.mylocation.*
-import android.graphics.Color as AndroidColor
+import org.osmdroid.views.overlay.mylocation.GpsMyLocationProvider
+import org.osmdroid.views.overlay.mylocation.IMyLocationProvider
+import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay
 import java.text.DecimalFormat
-import java.util.LinkedList
 import kotlin.math.abs
 import kotlin.math.floor
+import android.graphics.Color as AndroidColor
+
+// --- LOCAL DATA ---
+data class TacticalWaypoint(
+    var id: Long = -1L, // Tracks the server database ID
+    var title: String,
+    var description: String,
+    val point: GeoPoint,
+    val isPublic: Boolean
+)
+
+// --- NETWORK PAYLOADS ---
+data class WaypointRequestPayload(
+    val senderId: String,
+    val title: String,
+    val latitude: Double,
+    val longitude: Double,
+    val description: String
+)
+
+data class WaypointResponsePayload(
+    val id: Long,
+    val senderId: String,
+    val title: String,
+    val latitude: Double,
+    val longitude: Double,
+    val description: String,
+    val timestamp: String
+)
+
+enum class MapFrequency { PRIVATE, PUBLIC }
 
 @Composable
 fun MapScreen(onBack: () -> Unit) {
@@ -51,27 +114,28 @@ fun MapScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val prefs = context.getSharedPreferences("TacticalMapPrefs", Context.MODE_PRIVATE)
-
-    // 1. Configuration
-    Configuration.getInstance().load(context, context.getSharedPreferences("osmdroid", 0))
-    Configuration.getInstance().userAgentValue = "SurvivalMesh/1.0"
+    val scope = rememberCoroutineScope()
+    val db = remember { AppDatabase.getDatabase(context).dogtagDao() }
 
     // --- STATE ---
     var mapView by remember { mutableStateOf<MapView?>(null) }
     var hasPermission by remember { mutableStateOf(false) }
+    var currentFrequency by remember { mutableStateOf(MapFrequency.PRIVATE) }
+    var senderUuid by remember { mutableStateOf("UNKNOWN") }
 
     // Dialog & Marker State
     var showAddDialog by remember { mutableStateOf(false) }
     var showEditDialog by remember { mutableStateOf(false) }
     var targetGeoPoint by remember { mutableStateOf<GeoPoint?>(null) }
     var markerNameInput by remember { mutableStateOf("") }
+    var markerDescInput by remember { mutableStateOf("") }
+    var markerIsPublic by remember { mutableStateOf(false) }
     var selectedMarker by remember { mutableStateOf<Marker?>(null) }
 
-    // Trail State
+    val savedWaypoints = remember { mutableStateListOf<TacticalWaypoint>() }
     var isTrailActive by remember { mutableStateOf(prefs.getBoolean("trail_active", true)) }
     val trailPoints = remember { mutableStateListOf<GeoPoint>() }
 
-    // Permissions
     val launcher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { hasPermission = it }
@@ -79,40 +143,21 @@ fun MapScreen(onBack: () -> Unit) {
     LaunchedEffect(Unit) {
         hasPermission = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
         if (!hasPermission) launcher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+
+        // Grab UUID silently for the server payload
+        val dogtag = withContext(Dispatchers.IO) { db.getDogtag() }
+        senderUuid = dogtag?.userUuid ?: "UNKNOWN"
     }
 
-    // --- HELPERS ---
+    // --- CORE LOGIC ---
 
-    // 1. ADD MARKER
-    fun addMarker(map: MapView, pos: GeoPoint, title: String) {
-        val marker = Marker(map).apply {
-            position = pos
-            this.title = title
-            setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
-
-            // Independent InfoWindow
-            infoWindow = MarkerInfoWindow(org.osmdroid.library.R.layout.bonuspack_bubble, map)
-
-            // SINGLE CLICK: Toggle Text
-            setOnMarkerClickListener { m, _ ->
-                if (m.isInfoWindowShown) m.closeInfoWindow()
-                else {
-                    // InfoWindow.closeAll(map) // Uncomment if you want only one open at a time
-                    m.showInfoWindow()
-                }
-                true
-            }
+    fun saveLocalWaypoints() {
+        val string = savedWaypoints.joinToString(";") {
+            val safeTitle = it.title.replace("|", "").replace(";", "")
+            val safeDesc = it.description.replace("|", "").replace(";", "")
+            "${it.id}|$safeTitle|$safeDesc|${it.point.latitude}|${it.point.longitude}|${it.isPublic}"
         }
-        map.overlays.add(marker)
-        map.invalidate()
-    }
-
-    // 2. SAVE FUNCTIONS
-    fun saveMarkers() {
-        mapView ?: return
-        val markers = mapView!!.overlays.filterIsInstance<Marker>()
-        val string = markers.joinToString(";") { "${it.title}|${it.position.latitude}|${it.position.longitude}" }
-        prefs.edit().putString("saved_markers", string).apply()
+        prefs.edit().putString("saved_waypoints_v4", string).apply()
     }
 
     fun saveTrail() {
@@ -120,35 +165,95 @@ fun MapScreen(onBack: () -> Unit) {
         prefs.edit().putString("saved_trail", string).apply()
     }
 
-    // 3. LOAD DATA
-    LaunchedEffect(mapView) {
-        if (mapView != null) {
-            val savedMarkers = prefs.getString("saved_markers", "") ?: ""
-            if (savedMarkers.isNotEmpty()) {
-                savedMarkers.split(";").forEach {
-                    val p = it.split("|")
-                    if (p.size == 3) addMarker(mapView!!, GeoPoint(p[1].toDouble(), p[2].toDouble()), p[0])
-                }
+    fun refreshMarkers() {
+        mapView?.let { map ->
+            val markersToRemove = map.overlays.filterIsInstance<Marker>()
+            map.overlays.removeAll(markersToRemove)
+
+            val visibleWaypoints = savedWaypoints.filter {
+                if (currentFrequency == MapFrequency.PRIVATE) !it.isPublic else it.isPublic
             }
-            val savedTrail = prefs.getString("saved_trail", "") ?: ""
-            if (savedTrail.isNotEmpty()) {
-                savedTrail.split("|").forEach {
-                    val p = it.split(",")
-                    if (p.size == 2) trailPoints.add(GeoPoint(p[0].toDouble(), p[1].toDouble()))
+
+            visibleWaypoints.forEach { wp ->
+                val marker = Marker(map).apply {
+                    position = wp.point
+                    title = wp.title
+                    snippet = wp.description
+                    setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                    infoWindow = MarkerInfoWindow(org.osmdroid.library.R.layout.bonuspack_bubble, map)
+
+                    setOnMarkerClickListener { m, _ ->
+                        if (m.isInfoWindowShown) m.closeInfoWindow() else m.showInfoWindow()
+                        true
+                    }
                 }
+                map.overlays.add(marker)
+            }
+            map.invalidate()
+        }
+    }
+
+    // PULL DOWN PUBLIC MARKERS FROM SERVER
+    fun fetchPublicMesh() {
+        scope.launch(Dispatchers.IO) {
+            try {
+                val response = RetrofitInstance.api.getAllWaypoints()
+                if (response.isSuccessful) {
+                    val serverWaypoints = response.body() ?: emptyList()
+                    withContext(Dispatchers.Main) {
+                        savedWaypoints.removeAll { it.isPublic }
+                        serverWaypoints.forEach { wp ->
+                            savedWaypoints.add(
+                                TacticalWaypoint(
+                                    id = wp.id, // Save the server ID locally
+                                    title = wp.title,
+                                    description = wp.description,
+                                    point = GeoPoint(wp.latitude, wp.longitude),
+                                    isPublic = true
+                                )
+                            )
+                        }
+                        refreshMarkers()
+                    }
+                }
+            } catch (e: Exception) {
+                println("Tactical Sync Error: Could not reach Public Mesh. ${e.message}")
             }
         }
     }
 
-    // MAIN LAYOUT
-    Box(
-        Modifier
-            .fillMaxSize()
-            .background(PipBlack) // Uses Global Black
-            .systemBarsPadding()
-    ) {
+    LaunchedEffect(mapView) {
+        if (mapView != null) {
+            val savedData = prefs.getString("saved_waypoints_v4", "") ?: ""
+            if (savedData.isNotEmpty()) {
+                savedData.split(";").forEach {
+                    val p = it.split("|")
+                    if (p.size >= 6) {
+                        savedWaypoints.add(TacticalWaypoint(p[0].toLong(), p[1], p[2], GeoPoint(p[3].toDouble(), p[4].toDouble()), p[5].toBoolean()))
+                    }
+                }
+            }
+            val loadedTrail = prefs.getString("saved_trail", "") ?: ""
+            if (loadedTrail.isNotEmpty()) {
+                loadedTrail.split("|").forEach {
+                    val p = it.split(",")
+                    if (p.size == 2) trailPoints.add(GeoPoint(p[0].toDouble(), p[1].toDouble()))
+                }
+            }
+            refreshMarkers()
+        }
+    }
 
-        // 4. MAP VIEW
+    // Re-render and Fetch when tab changes
+    LaunchedEffect(currentFrequency) {
+        if (currentFrequency == MapFrequency.PUBLIC) {
+            fetchPublicMesh()
+        }
+        refreshMarkers()
+    }
+
+    // --- MAIN UI ---
+    Box(Modifier.fillMaxSize().background(PipBlack).systemBarsPadding()) {
         AndroidView(
             modifier = Modifier.fillMaxSize(),
             factory = { ctx ->
@@ -156,61 +261,54 @@ fun MapScreen(onBack: () -> Unit) {
                     setTileSource(TileSourceFactory.MAPNIK)
                     setMultiTouchControls(true)
                     controller.setZoom(19.0)
-
-                    // A. Grid
                     overlays.add(BezelGridOverlay())
 
-                    // B. Touch Receiver (HITBOX FIX)
                     overlays.add(MapEventsOverlay(object : MapEventsReceiver {
                         override fun singleTapConfirmedHelper(p: GeoPoint?): Boolean {
                             InfoWindow.closeAll(this@apply)
                             return true
                         }
-
                         override fun longPressHelper(p: GeoPoint?): Boolean {
                             if (p == null) return false
                             val tap = Point()
                             projection.toPixels(p, tap)
 
-                            // HIT BOX LOGIC
                             val hit = overlays.filterIsInstance<Marker>().find { m ->
                                 val mPt = Point()
                                 projection.toPixels(m.position, mPt)
                                 val xDiff = abs(tap.x - mPt.x)
                                 val yDiff = mPt.y - tap.y
-
-                                // 80px wide, extends -20px below to +150px above
-                                val hitX = xDiff < 80
-                                val hitY = yDiff > -20 && yDiff < 150
-                                hitX && hitY
+                                xDiff < 80 && yDiff > -20 && yDiff < 150
                             }
 
                             if (hit != null) {
                                 selectedMarker = hit
                                 markerNameInput = hit.title
+                                val match = savedWaypoints.find { it.title == hit.title && it.point.latitude == hit.position.latitude }
+                                markerDescInput = match?.description ?: ""
+                                markerIsPublic = match?.isPublic ?: false
                                 showEditDialog = true
                             } else {
                                 targetGeoPoint = p
                                 markerNameInput = ""
+                                markerDescInput = ""
+                                markerIsPublic = currentFrequency == MapFrequency.PUBLIC
                                 showAddDialog = true
                             }
                             return true
                         }
                     }))
 
-                    // C. Trail Layer
                     val polyline = Polyline().apply {
                         outlinePaint.color = AndroidColor.GREEN
-                        outlinePaint.strokeWidth = 5f
+                        outlinePaint.strokeWidth = 6f
                     }
                     overlays.add(polyline)
-
                     mapView = this
                 }
             }
         )
 
-        // Sync Trail
         LaunchedEffect(trailPoints.size) {
             mapView?.let { map ->
                 val poly = map.overlays.filterIsInstance<Polyline>().firstOrNull()
@@ -219,42 +317,19 @@ fun MapScreen(onBack: () -> Unit) {
             }
         }
 
-        // Lifecycle
-        DisposableEffect(lifecycleOwner) {
-            val obs = LifecycleEventObserver { _, e ->
-                if (e == Lifecycle.Event.ON_RESUME) mapView?.onResume()
-                if (e == Lifecycle.Event.ON_PAUSE) mapView?.onPause()
-            }
-            lifecycleOwner.lifecycle.addObserver(obs)
-            onDispose { lifecycleOwner.lifecycle.removeObserver(obs) }
-        }
-
-        // GPS Logic
         LaunchedEffect(hasPermission, mapView) {
             if (hasPermission && mapView != null) {
                 val provider = GpsMyLocationProvider(context)
-                provider.locationUpdateMinDistance = 0f
-                provider.locationUpdateMinTime = 0L
+                provider.locationUpdateMinDistance = 1f
+                provider.locationUpdateMinTime = 1000L
 
                 val myLoc = object : MyLocationNewOverlay(provider, mapView) {
-                    val history = LinkedList<Location>()
                     override fun onLocationChanged(l: Location?, s: IMyLocationProvider?) {
+                        super.onLocationChanged(l, s)
                         if (l == null) return
-                        history.add(l)
-                        if (history.size > 3) history.removeFirst()
-                        var sumLat = 0.0; var sumLon = 0.0
-                        history.forEach { sumLat += it.latitude; sumLon += it.longitude }
-                        val smooth = Location("S").apply {
-                            latitude = sumLat / history.size
-                            longitude = sumLon / history.size
-                            bearing = l.bearing
-                            accuracy = l.accuracy
-                        }
-                        super.onLocationChanged(smooth, s)
-
                         if (isTrailActive) {
-                            val pt = GeoPoint(smooth.latitude, smooth.longitude)
-                            if (trailPoints.isEmpty() || pt.distanceToAsDouble(trailPoints.last()) > 5.0) {
+                            val pt = GeoPoint(l.latitude, l.longitude)
+                            if (trailPoints.isEmpty() || pt.distanceToAsDouble(trailPoints.last()) > 1.5) {
                                 trailPoints.add(pt)
                                 saveTrail()
                             }
@@ -268,89 +343,52 @@ fun MapScreen(onBack: () -> Unit) {
             }
         }
 
-        // --- UI OVERLAYS (CONTROLS) ---
+        // --- OVERLAY CONTROLS ---
+        Column(Modifier.fillMaxSize()) {
 
-        Column(
-            Modifier
-                .align(Alignment.TopStart)
-                .padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            // 1. Trail Toggle (Uses PipAmber)
-            Box(
-                Modifier
-                    .background(PipBlack.copy(0.7f))
-                    .border(1.dp, if (isTrailActive) PipGreen else PipRed)
-                    .clickable {
-                        isTrailActive = !isTrailActive
-                        prefs.edit().putBoolean("trail_active", isTrailActive).apply()
-                    }
-                    .padding(8.dp)
-            ) {
-                Text(
-                    text = "TRAIL: ${if(isTrailActive) "ON" else "OFF"}",
-                    color = if (isTrailActive) PipGreen else PipRed,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-
-            // 2. Clear Trail
-            Box(
-                Modifier
-                    .background(PipBlack.copy(0.7f))
-                    .border(1.dp, PipRed)
-                    .clickable {
-                        trailPoints.clear()
-                        saveTrail()
-                        mapView?.invalidate()
-                    }
-                    .padding(8.dp)
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Refresh, null, tint = PipRed, modifier = Modifier.size(16.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text("CLEAR TRAIL", color = PipRed, fontWeight = FontWeight.Bold)
+            // FREQUENCY TABS
+            Row(modifier = Modifier.fillMaxWidth().background(PipBlack.copy(alpha = 0.8f)).padding(top = 16.dp, bottom = 8.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
+                Box(modifier = Modifier.weight(1f).padding(horizontal = 8.dp).border(2.dp, if (currentFrequency == MapFrequency.PRIVATE) PipAmber else PipBlack, RoundedCornerShape(4.dp)).clickable { currentFrequency = MapFrequency.PRIVATE }.padding(12.dp), contentAlignment = Alignment.Center) {
+                    Text("PRIVATE", color = if (currentFrequency == MapFrequency.PRIVATE) PipAmber else PipAmber.copy(0.4f), fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
+                }
+                Box(modifier = Modifier.weight(1f).padding(horizontal = 8.dp).border(2.dp, if (currentFrequency == MapFrequency.PUBLIC) PipAmber else PipBlack, RoundedCornerShape(4.dp)).clickable { currentFrequency = MapFrequency.PUBLIC }.padding(12.dp), contentAlignment = Alignment.Center) {
+                    Text("PUBLIC MESH", color = if (currentFrequency == MapFrequency.PUBLIC) PipAmber else PipAmber.copy(0.4f), fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
                 }
             }
 
-            // 3. Clear All Markers (Uses PipRed)
-            Box(
-                Modifier
-                    .background(PipBlack.copy(0.7f))
-                    .border(1.dp, PipRed)
-                    .clickable {
-                        mapView?.overlays?.removeAll { it is Marker }
-                        mapView?.invalidate()
-                        saveMarkers()
-                    }
-                    .padding(8.dp)
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Delete, null, tint = PipRed, modifier = Modifier.size(16.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text("DEL ALL", color = PipRed, fontWeight = FontWeight.Bold)
+            // SIDE CONTROLS
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Box(Modifier.background(PipBlack.copy(0.7f)).border(1.dp, if (isTrailActive) PipGreen else PipRed).clickable {
+                    isTrailActive = !isTrailActive
+                    prefs.edit().putBoolean("trail_active", isTrailActive).apply()
+                }.padding(8.dp)) {
+                    Text("TRAIL: ${if(isTrailActive) "REC" else "OFF"}", color = if (isTrailActive) PipGreen else PipRed, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
                 }
+                Box(Modifier.background(PipBlack.copy(0.7f)).border(1.dp, PipRed).clickable {
+                    trailPoints.clear()
+                    saveTrail()
+                    mapView?.invalidate()
+                }.padding(8.dp)) {
+                    Text("WIPE TRAIL", color = PipRed, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
+                }
+            }
+            Spacer(modifier = Modifier.weight(1f))
+
+            // Recenter
+            Box(Modifier.align(Alignment.End).padding(20.dp).size(50.dp).background(PipBlack.copy(.7f), CircleShape).border(2.dp, PipAmber, CircleShape)
+                .clickable {
+                    val loc = mapView?.overlays?.filterIsInstance<MyLocationNewOverlay>()?.firstOrNull()?.myLocation
+                    if (loc != null) {
+                        mapView?.controller?.animateTo(loc)
+                        mapView?.overlays?.filterIsInstance<MyLocationNewOverlay>()?.firstOrNull()?.enableFollowLocation()
+                    }
+                }, contentAlignment = Alignment.Center) { Icon(Icons.Default.Home, null, tint = PipAmber) }
+
+            // Back
+            Box(Modifier.fillMaxWidth().height(60.dp).background(PipAmber).clickable { onBack() }, contentAlignment = Alignment.Center) {
+                Text("< OFFLINE SYSTEM <", color = PipBlack, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
             }
         }
-
-        // Recenter
-        Box(Modifier.align(Alignment.TopEnd).padding(20.dp).size(50.dp)
-            .background(PipBlack.copy(.7f), CircleShape).border(2.dp, PipAmber, CircleShape)
-            .clickable {
-                val loc = mapView?.overlays?.filterIsInstance<MyLocationNewOverlay>()?.firstOrNull()?.myLocation
-                if (loc != null) {
-                    mapView?.controller?.animateTo(loc)
-                    mapView?.overlays?.filterIsInstance<MyLocationNewOverlay>()?.firstOrNull()?.enableFollowLocation()
-                }
-            },
-            contentAlignment = Alignment.Center
-        ) { Icon(Icons.Default.Home, null, tint = PipAmber) }
-
-        // Back
-        Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(60.dp)
-            .background(PipAmber).clickable { onBack() },
-            contentAlignment = Alignment.Center
-        ) { Text("< Geri <", color = PipBlack, fontWeight = FontWeight.Bold) }
 
         // --- DIALOGS ---
 
@@ -358,32 +396,74 @@ fun MapScreen(onBack: () -> Unit) {
             AlertDialog(
                 onDismissRequest = { showAddDialog = false },
                 containerColor = PipBlack,
-                title = { Text("NEW WAYPOINT", color = PipAmber) },
+                title = { Text("NEW WAYPOINT", color = PipAmber, fontFamily = FontFamily.Monospace) },
                 text = {
-                    OutlinedTextField(
-                        value = markerNameInput,
-                        onValueChange = { markerNameInput = it },
-                        label = { Text("TITLE", color = PipAmber) },
-                        colors = TextFieldDefaults.colors(
-                            focusedTextColor = PipAmber,
-                            unfocusedTextColor = PipAmber,
-                            focusedContainerColor = Color.Transparent,
-                            unfocusedContainerColor = Color.Transparent,
-                            focusedIndicatorColor = PipAmber,
-                            unfocusedIndicatorColor = PipAmber,
-                            focusedLabelColor = PipAmber,
-                            unfocusedLabelColor = PipAmber
+                    Column {
+                        OutlinedTextField(
+                            value = markerNameInput, onValueChange = { markerNameInput = it },
+                            label = { Text("TITLE", color = PipAmber) },
+                            textStyle = androidx.compose.ui.text.TextStyle(color = PipAmber, fontFamily = FontFamily.Monospace),
+                            colors = TextFieldDefaults.colors(focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent, focusedIndicatorColor = PipAmber, unfocusedIndicatorColor = PipAmber, focusedLabelColor = PipAmber, unfocusedLabelColor = PipAmber)
                         )
-                    )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = markerDescInput, onValueChange = { markerDescInput = it },
+                            label = { Text("DESCRIPTION", color = PipAmber) },
+                            textStyle = androidx.compose.ui.text.TextStyle(color = PipAmber, fontFamily = FontFamily.Monospace),
+                            colors = TextFieldDefaults.colors(focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent, focusedIndicatorColor = PipAmber, unfocusedIndicatorColor = PipAmber, focusedLabelColor = PipAmber, unfocusedLabelColor = PipAmber)
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { markerIsPublic = !markerIsPublic }) {
+                            Checkbox(checked = markerIsPublic, onCheckedChange = { markerIsPublic = it }, colors = CheckboxDefaults.colors(checkedColor = PipAmber, checkmarkColor = PipBlack, uncheckedColor = PipAmber))
+                            Text("TRANSMIT TO PUBLIC MESH", color = PipAmber, fontFamily = FontFamily.Monospace, fontSize = 12.sp)
+                        }
+                    }
                 },
                 confirmButton = {
                     Button(onClick = {
                         if (targetGeoPoint != null && markerNameInput.isNotBlank()) {
-                            addMarker(mapView!!, targetGeoPoint!!, markerNameInput)
-                            saveMarkers()
+                            val newWp = TacticalWaypoint(
+                                id = -1L,
+                                title = markerNameInput,
+                                description = markerDescInput,
+                                point = targetGeoPoint!!,
+                                isPublic = markerIsPublic
+                            )
+                            savedWaypoints.add(newWp)
+                            saveLocalWaypoints()
+                            refreshMarkers()
+
+                            // 1. PUSH TO SERVER IF PUBLIC
+                            if (markerIsPublic) {
+                                scope.launch(Dispatchers.IO) {
+                                    try {
+                                        val payload = WaypointRequestPayload(
+                                            senderId = senderUuid,
+                                            title = markerNameInput,
+                                            latitude = targetGeoPoint!!.latitude,
+                                            longitude = targetGeoPoint!!.longitude,
+                                            description = markerDescInput
+                                        )
+                                        val response = RetrofitInstance.api.createWaypoint(payload)
+                                        if (response.isSuccessful) {
+                                            // Save the Server's ID back to the local device so we can Delete/Update it later!
+                                            val serverId = response.body()?.id
+                                            if (serverId != null) {
+                                                val index = savedWaypoints.indexOf(newWp)
+                                                if (index != -1) {
+                                                    savedWaypoints[index].id = serverId
+                                                    saveLocalWaypoints()
+                                                }
+                                            }
+                                        }
+                                    } catch (e: Exception) {
+                                        println("Tactical Sync Error: Failed to push waypoint.")
+                                    }
+                                }
+                            }
                         }
                         showAddDialog = false
-                    }, colors = ButtonDefaults.buttonColors(containerColor = PipAmber)) { Text("ADD", color = PipBlack) }
+                    }, colors = ButtonDefaults.buttonColors(containerColor = PipAmber)) { Text("PLOT", color = PipBlack, fontFamily = FontFamily.Monospace) }
                 }
             )
         }
@@ -392,51 +472,89 @@ fun MapScreen(onBack: () -> Unit) {
             AlertDialog(
                 onDismissRequest = { showEditDialog = false },
                 containerColor = PipBlack,
-                title = { Text("EDIT WAYPOINT", color = PipAmber) },
+                title = { Text("EDIT WAYPOINT", color = PipAmber, fontFamily = FontFamily.Monospace) },
                 text = {
-                    OutlinedTextField(
-                        value = markerNameInput,
-                        onValueChange = { markerNameInput = it },
-                        label = { Text("TITLE", color = PipAmber) },
-                        colors = TextFieldDefaults.colors(
-                            focusedTextColor = PipAmber,
-                            unfocusedTextColor = PipAmber,
-                            focusedContainerColor = Color.Transparent,
-                            unfocusedContainerColor = Color.Transparent,
-                            focusedIndicatorColor = PipAmber,
-                            unfocusedIndicatorColor = PipAmber,
-                            focusedLabelColor = PipAmber,
-                            unfocusedLabelColor = PipAmber
+                    Column {
+                        OutlinedTextField(
+                            value = markerNameInput, onValueChange = { markerNameInput = it },
+                            label = { Text("TITLE", color = PipAmber) },
+                            textStyle = androidx.compose.ui.text.TextStyle(color = PipAmber, fontFamily = FontFamily.Monospace),
+                            colors = TextFieldDefaults.colors(focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent, focusedIndicatorColor = PipAmber, unfocusedIndicatorColor = PipAmber, focusedLabelColor = PipAmber, unfocusedLabelColor = PipAmber)
                         )
-                    )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = markerDescInput, onValueChange = { markerDescInput = it },
+                            label = { Text("DESCRIPTION", color = PipAmber) },
+                            textStyle = androidx.compose.ui.text.TextStyle(color = PipAmber, fontFamily = FontFamily.Monospace),
+                            colors = TextFieldDefaults.colors(focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent, focusedIndicatorColor = PipAmber, unfocusedIndicatorColor = PipAmber, focusedLabelColor = PipAmber, unfocusedLabelColor = PipAmber)
+                        )
+                    }
                 },
                 confirmButton = {
                     Row {
+                        // --- 2. THE UPDATE BUTTON ---
                         Button(onClick = {
-                            selectedMarker?.title = markerNameInput
-                            selectedMarker?.showInfoWindow()
-                            saveMarkers()
+                            val index = savedWaypoints.indexOfFirst { it.title == selectedMarker?.title && it.point.latitude == selectedMarker?.position?.latitude }
+                            if (index != -1) {
+                                // Update Locally
+                                savedWaypoints[index].title = markerNameInput
+                                savedWaypoints[index].description = markerDescInput
+                                saveLocalWaypoints()
+                                refreshMarkers()
+
+                                val wpToUpdate = savedWaypoints[index]
+
+                                // Push Update to Server
+                                if (wpToUpdate.isPublic && wpToUpdate.id != -1L) {
+                                    scope.launch(Dispatchers.IO) {
+                                        try {
+                                            val payload = WaypointRequestPayload(
+                                                senderId = senderUuid,
+                                                title = markerNameInput,
+                                                latitude = wpToUpdate.point.latitude,
+                                                longitude = wpToUpdate.point.longitude,
+                                                description = markerDescInput
+                                            )
+                                            val response = RetrofitInstance.api.updateWaypoint(wpToUpdate.id, senderUuid, payload)
+                                            if (!response.isSuccessful) {
+                                                println("Tactical Sync Error: Update rejected. Code: ${response.code()}")
+                                            }
+                                        } catch (e: Exception) {
+                                            println("Tactical Sync Error: Failed to transmit update.")
+                                        }
+                                    }
+                                }
+                            }
                             showEditDialog = false
-                        }, colors = ButtonDefaults.buttonColors(containerColor = PipAmber)) { Text("UPDATE", color = PipBlack) }
+                        }, colors = ButtonDefaults.buttonColors(containerColor = PipAmber)) { Text("UPDATE", color = PipBlack, fontFamily = FontFamily.Monospace) }
 
                         Spacer(Modifier.width(8.dp))
 
-                        // FORCE DELETE BUTTON
-                        Button(
-                            colors = ButtonDefaults.buttonColors(containerColor = PipRed),
-                            onClick = {
-                                selectedMarker?.closeInfoWindow()
-                                if (mapView != null && selectedMarker != null) {
-                                    mapView!!.overlays.remove(selectedMarker)
+                        // --- 3. THE DELETE BUTTON ---
+                        Button(colors = ButtonDefaults.buttonColors(containerColor = PipRed), onClick = {
+                            val index = savedWaypoints.indexOfFirst { it.title == selectedMarker?.title && it.point.latitude == selectedMarker?.position?.latitude }
+                            if (index != -1) {
+                                val wpToDelete = savedWaypoints[index]
+
+                                // Tell Server to Delete
+                                if (wpToDelete.isPublic && wpToDelete.id != -1L) {
+                                    scope.launch(Dispatchers.IO) {
+                                        try {
+                                            RetrofitInstance.api.deleteWaypoint(wpToDelete.id, senderUuid)
+                                        } catch (e: Exception) {
+                                            println("Tactical Sync Error: Failed to send kill command.")
+                                        }
+                                    }
                                 }
-                                mapView?.invalidate()
-                                saveMarkers()
-                                selectedMarker = null
-                                showEditDialog = false
+
+                                // Delete Locally
+                                savedWaypoints.removeAt(index)
+                                saveLocalWaypoints()
+                                refreshMarkers()
                             }
-                        ) {
-                            Icon(Icons.Default.Delete, null, tint = PipBlack)
-                        }
+                            selectedMarker = null
+                            showEditDialog = false
+                        }) { Icon(Icons.Default.Delete, null, tint = PipBlack) }
                     }
                 }
             )
