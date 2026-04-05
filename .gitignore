@@ -1,3 +1,5 @@
+# Android Studio / IntelliJ files
+.idea/
 *.iml
 .gradle
 /local.properties
@@ -7,12 +9,19 @@
 /.idea/workspace.xml
 /.idea/navEditor.xml
 /.idea/assetWizardSettings.xml
-.DS_Store
-/build
+.idea/vcs.xml
+
+# Build files (Important!)
 build/
 app/build/
 /captures
 .externalNativeBuild
 .cxx
+
+# Logs and OS files
+build_log.txt
+build_log2.txt
+.DS_Store
+
+# Local properties
 local.properties
-.idea/vcs.xml
