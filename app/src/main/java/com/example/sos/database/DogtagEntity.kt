@@ -9,10 +9,19 @@ data class DogtagEntity(
     val id: Int = 1,
 
     val userUuid: String,
-    val fullName: String,
+    val publicKey: String,
+
+    val name: String,
+    val surname: String,
+    val gender: String, // <-- NEW
+    val age: Int,
+    val weight: Double,
+    val height: Double,
+
     val bloodType: String,
     val allergies: String,
     val medications: String,
     val pastOperations: String,
-    val emergencyUuids: String
+
+    val emergencyContacts: List<String>
 )
