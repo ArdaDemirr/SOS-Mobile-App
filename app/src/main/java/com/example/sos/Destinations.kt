@@ -38,5 +38,5 @@ enum class Screen {
     Dogtag,
     Contact,
     ChatHub,       // The Inbox Screen
-    ChatScreen   // The actual messaging screen
+    ChatScreen,   // The actual messaging screen
 }

@@ -1,5 +1,6 @@
 package com.example.sos
 
+import android.Manifest
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
@@ -7,10 +8,13 @@ import android.os.Bundle
 import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
 import com.example.sos.database.AppDatabase
 import com.example.sos.notused.BatterySaverScreen
 import com.example.sos.notused.BiometricLockScreen
@@ -20,33 +24,71 @@ import kotlinx.coroutines.withContext
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // --- PERMISSION CHECK: ALLOW DRAWING OVER OTHER APPS ---
+
+        // --- PERMISSION CHECK: ALLOW DRAWING OVER OTHER APPS (For SOS Wakeup) ---
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
             val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName"))
             startActivity(intent)
         }
+
         enableEdgeToEdge()
 
         setContent {
             val context = LocalContext.current
             val db = remember { AppDatabase.getDatabase(context) }
 
-            // 1. Create a variable to hold the Current Screen
+            // --- STATE VARIABLES ---
             var currentScreen by remember { mutableStateOf(Screen.Dashboard) }
 
-            // 2. ADD THESE VARIABLES: To hold Chat Data
-            var savedUserUuid by remember { mutableStateOf("UNKNOWN_USER") }
+            var myUuid by remember { mutableStateOf("UNKNOWN") }
             var targetChatUuid by remember { mutableStateOf("") }
             var targetChatName by remember { mutableStateOf("") }
 
-            // 3. FETCH DOGTAG UUID: Get who the user is from the database automatically
+            // --- FETCH DOGTAG UUID ---
             LaunchedEffect(Unit) {
                 withContext(Dispatchers.IO) {
                     val myDogtag = db.dogtagDao().getDogtag()
                     if (myDogtag != null) {
-                        savedUserUuid = myDogtag.userUuid
+                        myUuid = myDogtag.userUuid
                     }
                 }
+            }
+
+            // --- NEARBY CONNECTIONS & MESH SERVICE PERMISSIONS ---
+            val permissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                arrayOf(
+                    Manifest.permission.BLUETOOTH_SCAN,
+                    Manifest.permission.BLUETOOTH_ADVERTISE,
+                    Manifest.permission.BLUETOOTH_CONNECT,
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.NEARBY_WIFI_DEVICES
+                )
+            } else {
+                arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION,
+                    Manifest.permission.BLUETOOTH,
+                    Manifest.permission.BLUETOOTH_ADMIN,
+                    Manifest.permission.ACCESS_WIFI_STATE,
+                    Manifest.permission.CHANGE_WIFI_STATE
+                )
+            }
+
+            val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { perms ->
+                val allGranted = perms.values.all { it }
+                if (allGranted) {
+                    // Start the background mesh mule service
+                    val serviceIntent = Intent(context, MeshService::class.java)
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        ContextCompat.startForegroundService(context, serviceIntent)
+                    } else {
+                        context.startService(serviceIntent)
+                    }
+                }
+            }
+
+            LaunchedEffect(Unit) {
+                permissionLauncher.launch(permissions)
             }
 
             // --- CRASH DETECTION LOGIC ---
@@ -57,19 +99,19 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            // Handle the "Physical Back Button" on the phone
+            // --- HARDWARE BACK BUTTON LOGIC ---
             BackHandler(enabled = currentScreen != Screen.Dashboard) {
-                // PREVENT escaping the Countdown with the back button
                 if (currentScreen != Screen.CrashCountdown) {
-                    currentScreen = Screen.Dashboard
+                    currentScreen = when (currentScreen) {
+                        Screen.ChatScreen -> Screen.ChatHub // Go back to Inbox from Chat
+                        else -> Screen.Dashboard
+                    }
                 }
             }
 
-            // The Switch Logic
+            // --- MAIN NAVIGATION ROUTER ---
             when (currentScreen) {
-                Screen.Dashboard -> {
-                    DashboardScreen(onNavigate = { newScreen -> currentScreen = newScreen })
-                }
+                Screen.Dashboard -> DashboardScreen(onNavigate = { newScreen -> currentScreen = newScreen })
 
                 Screen.CrashCountdown -> {
                     CrashCountdownScreen(
@@ -99,26 +141,48 @@ class MainActivity : ComponentActivity() {
                 // MESSAGING & MESH ROUTING
                 // ==========================================
 
-                // The SMS Inbox Screen (Replaces old chat logic)
-                Screen.ChatHub -> {
+                // MESH button now redirects to the Inbox for the seamless SMS experience
+                Screen.Mesh -> {
                     ChatHubScreen(
-                        myUuid = savedUserUuid,
+                        myUuid = myUuid,
                         onConversationClick = { uuid, name ->
                             targetChatUuid = uuid
                             targetChatName = name
-                            currentScreen = Screen.ChatScreen // Go to the actual chat
+                            currentScreen = Screen.ChatScreen
                         },
                         onBack = { currentScreen = Screen.Dashboard }
                     )
                 }
 
-                // The Actual Messaging Screen
+                Screen.ChatHub -> {
+                    ChatHubScreen(
+                        myUuid = myUuid,
+                        onConversationClick = { uuid, name ->
+                            targetChatUuid = uuid
+                            targetChatName = name
+                            currentScreen = Screen.ChatScreen
+                        },
+                        onBack = { currentScreen = Screen.Dashboard }
+                    )
+                }
+
                 Screen.ChatScreen -> {
                     TacticalChatScreen(
-                        myUuid = savedUserUuid,
+                        myUuid = myUuid,
                         targetUuid = targetChatUuid,
                         targetName = targetChatName,
-                        onBack = { currentScreen = Screen.ChatHub } // Go back to the Inbox
+                        onBack = { currentScreen = Screen.ChatHub }
+                    )
+                }
+
+                Screen.Contact -> {
+                    ContactsScreen(
+                        onBack = { currentScreen = Screen.Dashboard },
+                        onChat = { uuid, name ->
+                            targetChatUuid = uuid
+                            targetChatName = name
+                            currentScreen = Screen.ChatScreen
+                        }
                     )
                 }
 
@@ -139,18 +203,6 @@ class MainActivity : ComponentActivity() {
                 Screen.BiometricLock -> BiometricLockScreen(onBack = { currentScreen = Screen.Dashboard })
                 Screen.Checklist -> SurvivalChecklistScreen(onBack = { currentScreen = Screen.Dashboard })
                 Screen.Dogtag -> DogtagScreen(onBack = { currentScreen = Screen.Dashboard })
-
-                Screen.Contact -> {
-                    ContactsScreen(
-                        onBack = { currentScreen = Screen.Dashboard },
-                        onChat = { uuid, name ->
-                            // Allows you to jump straight into a chat from the Contacts page
-                            targetChatUuid = uuid
-                            targetChatName = name
-                            currentScreen = Screen.ChatScreen
-                        }
-                    )
-                }
 
                 else -> {
                     DetailScreen(
