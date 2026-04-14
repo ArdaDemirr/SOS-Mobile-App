@@ -25,3 +25,5 @@ build_log2.txt
 
 # Local properties
 local.properties
+Secrets.kt
+app/src/main/java/com/example/sos/Secrets.kt

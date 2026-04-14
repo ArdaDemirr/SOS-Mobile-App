@@ -57,13 +57,9 @@ interface SosApiService {
 }
 
 object RetrofitInstance {
-    // Tactical Connection: Using Hostname instead of volatile IP
-    // Replace this with your actual IPv4 address from the command prompt
-    private const val BASE_URL = "http://192.168.1.33:8080/"
-
     val api: SosApiService by lazy {
         retrofit2.Retrofit.Builder()
-            .baseUrl(BASE_URL)
+            .baseUrl(Secrets.BASE_URL) // <-- Just call the file directly!
             .addConverterFactory(retrofit2.converter.gson.GsonConverterFactory.create())
             .build()
             .create(SosApiService::class.java)
