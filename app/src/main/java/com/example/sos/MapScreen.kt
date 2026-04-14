@@ -77,6 +77,11 @@ import java.text.DecimalFormat
 import kotlin.math.abs
 import kotlin.math.floor
 import android.graphics.Color as AndroidColor
+import androidx.compose.runtime.*
+import androidx.preference.PreferenceManager
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import org.osmdroid.config.Configuration
 
 // --- LOCAL DATA ---
 data class TacticalWaypoint(
@@ -139,6 +144,32 @@ fun MapScreen(onBack: () -> Unit) {
     val launcher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { hasPermission = it }
+
+    // --- INITIALIZATION ---
+    LaunchedEffect(Unit) {
+        // Fix 403 Forbidden Error
+        Configuration.getInstance().load(context, PreferenceManager.getDefaultSharedPreferences(context))
+        Configuration.getInstance().userAgentValue = "SOS-Tactical-Mesh-Arda"
+
+        hasPermission = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        if (!hasPermission) launcher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+
+        val dogtag = withContext(Dispatchers.IO) { db.getDogtag() }
+        senderUuid = dogtag?.userUuid ?: "UNKNOWN"
+    }
+
+    // --- LIFECYCLE MANAGEMENT (Prevents Freezing) ---
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_RESUME -> mapView?.onResume()
+                Lifecycle.Event.ON_PAUSE -> mapView?.onPause()
+                else -> {}
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     LaunchedEffect(Unit) {
         hasPermission = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
