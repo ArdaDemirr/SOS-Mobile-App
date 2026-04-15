@@ -10,6 +10,10 @@ import retrofit2.http.DELETE
 import retrofit2.http.PUT
 import retrofit2.http.Path
 import retrofit2.http.Header
+import okhttp3.Interceptor
+import okhttp3.OkHttpClient
+import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
 
 interface SosApiService {
     // This matches your @PostMapping("/api/users/sync") in UserController
@@ -57,10 +61,38 @@ interface SosApiService {
 }
 
 object RetrofitInstance {
+
+    // Store the UUID here so the interceptor can use it dynamically
+    var currentUserUuid: String? = null
+
+    // The Bouncer Interceptor
+    private val authInterceptor = Interceptor { chain ->
+        val originalRequest = chain.request()
+        val path = originalRequest.url.encodedPath
+        val requestBuilder = originalRequest.newBuilder()
+
+        // TIER 2 ROUTING: User endpoints get the App Secret Key
+        if (path.contains("api/users")) {
+            requestBuilder.header("X-Client-Secret", Secrets.CLIENT_SECRET)
+        }
+        // TIER 3 ROUTING: Data endpoints get the User UUID
+        else {
+            val uuidToSend = currentUserUuid ?: "UNKNOWN_DEVICE"
+            requestBuilder.header("X-User-UUID", uuidToSend)
+        }
+
+        chain.proceed(requestBuilder.build())
+    }
+
+    private val client = OkHttpClient.Builder()
+        .addInterceptor(authInterceptor)
+        .build()
+
     val api: SosApiService by lazy {
-        retrofit2.Retrofit.Builder()
-            .baseUrl(Secrets.BASE_URL) // <-- Just call the file directly!
-            .addConverterFactory(retrofit2.converter.gson.GsonConverterFactory.create())
+        Retrofit.Builder()
+            .baseUrl(Secrets.BASE_URL)
+            .client(client)
+            .addConverterFactory(GsonConverterFactory.create())
             .build()
             .create(SosApiService::class.java)
     }

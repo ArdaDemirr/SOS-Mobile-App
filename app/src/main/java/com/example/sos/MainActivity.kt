@@ -51,6 +51,9 @@ class MainActivity : ComponentActivity() {
                     if (myDogtag != null) {
                         myUuid = myDogtag.userUuid
                     }
+                    // --- THE NEW LINE ---
+                    // "Load the gun" - Give the UUID to the network interceptor
+                    RetrofitInstance.currentUserUuid = myDogtag?.userUuid
                 }
             }
 
