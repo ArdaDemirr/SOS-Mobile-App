@@ -14,6 +14,7 @@ import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import retrofit2.http.Query
 
 interface SosApiService {
     // This matches your @PostMapping("/api/users/sync") in UserController
@@ -49,8 +50,14 @@ interface SosApiService {
     suspend fun relayPacket(@Body msg: MessageEntity, @Header("X-Relay-Id") relayNodeId: String): Response<MessageEntity>
 
     // 3. Inbox Sync (Fetch all messages targeted for YOU)
+    //@GET("api/messages/target/{targetId}")
+    //suspend fun fetchInbox(@Path("targetId") targetId: String): Response<List<MessageEntity>>
+
     @GET("api/messages/target/{targetId}")
-    suspend fun fetchInbox(@Path("targetId") targetId: String): Response<List<MessageEntity>>
+    suspend fun fetchInbox(
+        @Path("targetId") targetId: String,
+        @Query("since") sinceTimestamp: Long
+    ): Response<List<MessageEntity>>
 
     // 4. Thread Sync (Fetch the specific conversation between you and a friend)
     @GET("api/messages/conversation/{userA}/{userB}")

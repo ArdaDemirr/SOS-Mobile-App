@@ -43,10 +43,16 @@ fun ChatHubScreen(myUuid: String, onConversationClick: (String, String) -> Unit,
         contacts = withContext(Dispatchers.IO) { db.contactDao().getAllContacts() }
 
         // --- FETCH SERVER INBOX ON LAUNCH ---
+        // --- FETCH SERVER INBOX ON LAUNCH ---
         if (myUuid != "UNKNOWN_USER") {
             withContext(Dispatchers.IO) {
                 try {
-                    val response = RetrofitInstance.api.fetchInbox(myUuid)
+                    // 1. Get the High-Water Mark from the local database
+                    val latestTime = db.messageDao().getLatestMessageTimestamp() ?: 0L
+
+                    // 2. Pass it to the server!
+                    val response = RetrofitInstance.api.fetchInbox(myUuid, latestTime)
+
                     if (response.isSuccessful) {
                         response.body()?.forEach { msg ->
                             msg.isSynced = true // Mark synced since it came from server

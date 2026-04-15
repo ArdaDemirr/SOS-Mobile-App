@@ -119,10 +119,23 @@ class MeshManager private constructor(private val context: Context) {
     }
 
     private fun startServerSyncLoop(myNodeId: String) {
+        // 1. Arm the network interceptor immediately in case MainActivity didn't run
+        RetrofitInstance.currentUserUuid = myNodeId
+
         scope.launch {
             while (isActive) {
-                messageDao.getUnsyncedMessages().forEach { tryPushToServer(it) }
-                delay(15000) // Check for WiFi/GSM every 15 seconds
+                val unsyncedPackets = messageDao.getUnsyncedMessages()
+
+                // 2. Use a standard for-loop so we can pause between packets
+                for (msg in unsyncedPackets) {
+                    tryPushToServer(msg)
+
+                    // 3. THE COOLDOWN: Wait half a second before sending the next one
+                    delay(500L)
+                }
+
+                // 4. The main heartbeat sleep
+                delay(15000L)
             }
         }
     }

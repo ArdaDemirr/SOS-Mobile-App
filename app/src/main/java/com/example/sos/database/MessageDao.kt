@@ -22,4 +22,8 @@ interface MessageDao {
 
     @Query("SELECT messageId FROM messages")
     suspend fun getAllKnownMessageIds(): List<String>
+
+    // Gets the timestamp of the newest message you currently have
+    @Query("SELECT MAX(timestamp) FROM messages")
+    suspend fun getLatestMessageTimestamp(): Long?
 }
