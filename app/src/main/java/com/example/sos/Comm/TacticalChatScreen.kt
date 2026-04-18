@@ -35,7 +35,7 @@ import com.example.sos.SosSpaceMd
 import com.example.sos.SosStatusBadge
 import com.example.sos.PipSurface
 import com.example.sos.PipSurface2
-import com.example.sos.SosTextPrimary
+import com.example.sos.PipTextPrimary
 
 @Composable
 fun TacticalChatScreen(myUuid: String, targetUuid: String, targetName: String, onBack: () -> Unit) {
@@ -143,7 +143,7 @@ fun ChatBubble(msg: MessageEntity, isMe: Boolean) {
                 .padding(12.dp)
         ) {
             Column {
-                Text(msg.content, color = SosTextPrimary, fontFamily = FontFamily.Monospace, fontSize = 14.sp)
+                Text(msg.content, color = PipTextPrimary, fontFamily = FontFamily.Monospace, fontSize = 14.sp)
                 Spacer(Modifier.height(4.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     SosStatusBadge(

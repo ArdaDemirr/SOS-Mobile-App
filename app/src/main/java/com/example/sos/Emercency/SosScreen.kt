@@ -40,10 +40,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
-import com.example.sos.Morse.ScreenHeader
 import com.example.sos.PipAmber
 import com.example.sos.PipYellow
-import com.example.sos.PipBlack
 import com.example.sos.PipBorder
 import com.example.sos.SosInfoCard
 import com.example.sos.SosRadiusMd
@@ -54,9 +52,10 @@ import com.example.sos.SosSpaceMd
 import com.example.sos.SosSpaceSm
 import com.example.sos.SosStatusBadge
 import com.example.sos.PipSurface
-import com.example.sos.SosTextDisabled
-import com.example.sos.SosTextPrimary
-import com.example.sos.SosTextSecondary
+import com.example.sos.SosScreenScaffold
+import com.example.sos.PipTextDisabled
+import com.example.sos.PipTextPrimary
+import com.example.sos.PipTextSecondary
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -159,24 +158,20 @@ fun SosScreen(onBack: () -> Unit) {
 
     val isGpsLocked = gpsText == "LOCKED"
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(PipBlack)
-            .imePadding()
-            .systemBarsPadding()
+    SosScreenScaffold(
+        title = "SOS-ACİL",
+        subtitle = "Acil Durum Sinyali Gönderin ",
+        accentColor = PipRed, // This makes the blocky back-button and title RED
+        onBack = onBack
     ) {
-        ScreenHeader(title = "SOS-Acil", subtitle = "Acil durum bildirin", onBack = onBack)
-
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(SosSpaceMd)
+                //.padding(horizontal = 16.dp)
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(SosSpaceMd)
         ) {
-            Spacer(modifier = Modifier.height(4.dp))
-
+            Spacer(modifier = Modifier.height(SosSpaceSm))
             // ── VISUAL SIGNAL BUTTON ─────────────────────────────────────────
             SosSignalButton(
                 title = "FLAŞ SİNYALİ",
@@ -188,14 +183,14 @@ fun SosScreen(onBack: () -> Unit) {
 
             // ── AUDIO SIGNAL BUTTON ──────────────────────────────────────────
             SosSignalButton(
-                title = "SES FARÖ",
+                title = "SES SİNYALİ",
                 subtitle = "3000 Hz kesintisiz alarm tonu",
                 icon = Icons.Default.Phone,
                 isActive = isAudioSosActive,
                 onClick = { isAudioSosActive = !isAudioSosActive }
             )
 
-            SosSectionLabel("KONUM BİLGİSİ", PipYellow)
+            SosSectionLabel("KONUM BİLGİSİ", PipAmber)
 
             // ── GPS SECTION ──────────────────────────────────────────────────
             Column(
@@ -254,7 +249,7 @@ fun SosScreen(onBack: () -> Unit) {
                     }
                     SosStatusBadge(
                         if (isGpsActive) "AKTİF" else "KAPALI",
-                        if (isGpsActive) PipAmber else SosTextDisabled
+                        if (isGpsActive) PipAmber else PipTextDisabled
                     )
                 }
 
@@ -309,16 +304,16 @@ private fun SosSignalButton(
                     .border(2.dp, if (isActive) PipRed else PipBorder, CircleShape),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(icon, null, tint = if (isActive) PipRed else SosTextSecondary, modifier = Modifier.size(28.dp))
+                Icon(icon, null, tint = if (isActive) PipRed else PipTextSecondary, modifier = Modifier.size(28.dp))
             }
             Spacer(modifier = Modifier.Companion.width(SosSpaceMd))
             Column(modifier = Modifier.weight(1f)) {
-                Text(title, color = if (isActive) PipRed else SosTextPrimary, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.ExtraBold, fontSize = 15.sp)
-                Text(subtitle, color = if (isActive) PipRed.copy(0.7f) else SosTextSecondary, fontFamily = FontFamily.Monospace, fontSize = 10.sp)
+                Text(title, color = if (isActive) PipRed else PipTextPrimary, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.ExtraBold, fontSize = 15.sp)
+                Text(subtitle, color = if (isActive) PipRed.copy(0.7f) else PipTextSecondary, fontFamily = FontFamily.Monospace, fontSize = 10.sp)
             }
             SosStatusBadge(
                 if (isActive) "AKTİF" else "KAPALI",
-                if (isActive) PipRed else SosTextDisabled
+                if (isActive) PipRed else PipTextDisabled
             )
         }
     }

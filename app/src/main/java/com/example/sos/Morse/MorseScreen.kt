@@ -37,6 +37,7 @@ import com.example.sos.PipAmber
 import com.example.sos.PipBlack
 import com.example.sos.PipGreen
 import com.example.sos.PipRed
+import com.example.sos.SosScreenScaffold
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -93,7 +94,8 @@ fun MorseScreen(onBack: () -> Unit) {
 
     fun convertToPlain(input: String) {
         morseText = input
-        plainText = input.trim().split(" ").map { code -> reverseMorseMap[code] ?: "" }.joinToString("")
+        plainText =
+            input.trim().split(" ").map { code -> reverseMorseMap[code] ?: "" }.joinToString("")
     }
 
     fun speakText() {
@@ -114,10 +116,12 @@ fun MorseScreen(onBack: () -> Unit) {
                         toneGen.startTone(ToneGenerator.TONE_DTMF_1, 150) // Short Beep
                         delay(200)
                     }
+
                     '-' -> {
                         toneGen.startTone(ToneGenerator.TONE_DTMF_1, 400) // Long Beep
                         delay(450)
                     }
+
                     ' ' -> delay(200) // Gap between letters
                     '/' -> delay(600) // Gap between words
                 }
@@ -126,169 +130,186 @@ fun MorseScreen(onBack: () -> Unit) {
         }
     }
 
-    // --- LAYOUT ---
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(PipBlack) // Global Black
-            .systemBarsPadding()
-            .imePadding()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+    SosScreenScaffold(
+        title = "MORS",
+        subtitle = "Mors ile mesaj şifreleyin veya çözümleyin",
+        accentColor = PipAmber,
+        onBack = onBack
     ) {
-        // --- HEADER (Embedded directly here) ---
-        Column(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 8.dp, vertical = 8.dp), // Your manual padding!
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+
+            // --- 1. ENGLISH INPUT (Top) ---
             Row(
-                modifier = Modifier.fillMaxWidth().height(60.dp),
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(50.dp)
-                        .background(PipAmber, RoundedCornerShape(8.dp))
-                        .clickable { onBack() },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(Icons.Default.ArrowBack, null, tint = PipBlack)
+                Text(
+                    "Düz Yazı",
+                    color = if (!isMorseMode) PipAmber else PipAmber.copy(0.5f),
+                    fontFamily = FontFamily.Monospace
+                )
+
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    // SPEAK BUTTON
+                    Text(
+                        "Oynat",
+                        color = PipBlack, fontSize = 12.sp, fontWeight = FontWeight.Bold,
+                        modifier = Modifier.Companion.background(PipGreen, RoundedCornerShape(4.dp))
+                            .clickable { speakText() }
+                            .padding(horizontal = 8.dp, vertical = 2.dp)
+                    )
+                    // COPY BUTTON
+                    Text(
+                        "Kopyala",
+                        color = PipBlack, fontSize = 12.sp, fontWeight = FontWeight.Bold,
+                        modifier = Modifier.Companion.background(PipAmber, RoundedCornerShape(4.dp))
+                            .clickable { clipboardManager.setText(AnnotatedString(plainText)) }
+                            .padding(horizontal = 8.dp, vertical = 2.dp)
+                    )
                 }
-                Spacer(modifier = Modifier.width(16.dp))
-                Text(
-                    text = "MORSE",
-                    color = PipAmber,
-                    fontSize = 24.sp,
-                    fontFamily = FontFamily.Monospace,
-                    fontWeight = FontWeight.Bold
-                )
             }
-            Spacer(modifier = Modifier.height(8.dp))
-            Divider(color = PipAmber, thickness = 2.dp)
-        }
 
-        // --- 1. ENGLISH INPUT (Top) ---
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text("PLAIN TEXT", color = if(!isMorseMode) PipAmber else PipAmber.copy(0.5f), fontFamily = FontFamily.Monospace)
-
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                // SPEAK BUTTON
-                Text(
-                    "SPEAK",
-                    color = PipBlack, fontSize = 12.sp, fontWeight = FontWeight.Bold,
-                    modifier = Modifier.Companion.background(PipGreen, RoundedCornerShape(4.dp))
-                        .clickable { speakText() }
-                        .padding(horizontal = 8.dp, vertical = 2.dp)
-                )
-                // COPY BUTTON
-                Text(
-                    "COPY",
-                    color = PipBlack, fontSize = 12.sp, fontWeight = FontWeight.Bold,
-                    modifier = Modifier.Companion.background(PipAmber, RoundedCornerShape(4.dp))
-                        .clickable { clipboardManager.setText(AnnotatedString(plainText)) }
-                        .padding(horizontal = 8.dp, vertical = 2.dp)
-                )
-            }
-        }
-
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f)
-                .border(2.dp, if(!isMorseMode) PipAmber else PipAmber.copy(0.3f), RoundedCornerShape(8.dp))
-                .padding(16.dp)
-        ) {
-            if (plainText.isEmpty()) {
-                Text("TYPE HERE...", color = PipAmber.copy(0.5f), fontFamily = FontFamily.Monospace)
-            }
-            BasicTextField(
-                value = plainText,
-                onValueChange = { convertToMorse(it) },
-                textStyle = TextStyle(color = PipAmber, fontSize = 20.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold),
-                cursorBrush = SolidColor(PipAmber),
-                keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Done),
-                keyboardActions = KeyboardActions(onDone = { keyboardController?.hide() }),
-                modifier = Modifier.fillMaxSize().onFocusChanged { if (it.isFocused) isMorseMode = false }
-            )
-        }
-
-        // --- 2. MORSE OUTPUT (Bottom) ---
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text("MORSE CODE", color = if(isMorseMode) PipAmber else PipAmber.copy(0.5f), fontFamily = FontFamily.Monospace)
-
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                // PLAY AUDIO BUTTON
-                Text(
-                    if(isPlaying) "PLAYING..." else "PLAY",
-                    color = PipBlack, fontSize = 12.sp, fontWeight = FontWeight.Bold,
-                    modifier = Modifier.Companion.background(if(isPlaying) PipRed else PipGreen, RoundedCornerShape(4.dp))
-                        .clickable { playMorse() }
-                        .padding(horizontal = 8.dp, vertical = 2.dp)
-                )
-                // COPY BUTTON
-                Text(
-                    "COPY",
-                    color = PipBlack, fontSize = 12.sp, fontWeight = FontWeight.Bold,
-                    modifier = Modifier.Companion.background(PipAmber, RoundedCornerShape(4.dp))
-                        .clickable { clipboardManager.setText(AnnotatedString(morseText)) }
-                        .padding(horizontal = 8.dp, vertical = 2.dp)
-                )
-            }
-        }
-
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f)
-                .border(2.dp, if(isMorseMode) PipAmber else PipAmber.copy(0.3f), RoundedCornerShape(8.dp))
-                .clickable {
-                    isMorseMode = true
-                    focusManager.clearFocus()
-                    keyboardController?.hide()
-                }
-                .padding(16.dp)
-        ) {
-            if (morseText.isEmpty()) {
-                Text("... --- ...", color = PipAmber.copy(0.5f), fontFamily = FontFamily.Monospace)
-            }
-            Text(
-                text = morseText,
-                color = PipAmber,
-                fontSize = 24.sp,
-                fontFamily = FontFamily.Monospace,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())
-            )
-        }
-
-        // --- 3. TACTICAL KEYPAD ---
-        if (isMorseMode) {
-            Row(
-                modifier = Modifier.fillMaxWidth().height(80.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .border(
+                        2.dp,
+                        if (!isMorseMode) PipAmber else PipAmber.copy(0.3f),
+                        RoundedCornerShape(8.dp)
+                    )
+                    .padding(16.dp)
             ) {
-                TacticalButton(".", 1f) { convertToPlain(morseText + ".") }
-                TacticalButton("-", 1f) { convertToPlain(morseText + "-") }
-                TacticalButton("SPACE", 1f) { convertToPlain(morseText + " ") }
+                if (plainText.isEmpty()) {
+                    Text(
+                        "Yazınız...",
+                        color = PipAmber.copy(0.5f),
+                        fontFamily = FontFamily.Monospace
+                    )
+                }
+                BasicTextField(
+                    value = plainText,
+                    onValueChange = { convertToMorse(it) },
+                    textStyle = TextStyle(
+                        color = PipAmber,
+                        fontSize = 16.sp,
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Bold
+                    ),
+                    cursorBrush = SolidColor(PipAmber),
+                    keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = { keyboardController?.hide() }),
+                    modifier = Modifier.fillMaxSize()
+                        .onFocusChanged { if (it.isFocused) isMorseMode = false }
+                )
+            }
 
-                Box(
-                    modifier = Modifier.weight(0.8f).fillMaxHeight()
-                        .background(PipRed, RoundedCornerShape(8.dp))
-                        .border(2.dp, PipRed, RoundedCornerShape(8.dp))
-                        .clickable {
-                            if (morseText.isNotEmpty()) {
-                                val newText = if (morseText.endsWith(" ")) morseText.dropLast(1) else morseText.dropLast(1)
-                                convertToPlain(newText)
-                            }
-                        },
-                    contentAlignment = Alignment.Center
+            // --- 2. MORSE OUTPUT (Bottom) ---
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "Mors Kodu",
+                    color = if (isMorseMode) PipAmber else PipAmber.copy(0.5f),
+                    fontFamily = FontFamily.Monospace
+                )
+
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    // PLAY AUDIO BUTTON
+                    Text(
+                        if (isPlaying) "Oynatılıyor..." else "Oynat",
+                        color = PipBlack, fontSize = 12.sp, fontWeight = FontWeight.Bold,
+                        modifier = Modifier.Companion.background(
+                            if (isPlaying) PipRed else PipGreen,
+                            RoundedCornerShape(4.dp)
+                        )
+                            .clickable { playMorse() }
+                            .padding(horizontal = 8.dp, vertical = 2.dp)
+                    )
+                    // COPY BUTTON
+                    Text(
+                        "Kopyala",
+                        color = PipBlack, fontSize = 12.sp, fontWeight = FontWeight.Bold,
+                        modifier = Modifier.Companion.background(PipAmber, RoundedCornerShape(4.dp))
+                            .clickable { clipboardManager.setText(AnnotatedString(morseText)) }
+                            .padding(horizontal = 8.dp, vertical = 2.dp)
+                    )
+                }
+            }
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .border(
+                        2.dp,
+                        if (isMorseMode) PipAmber else PipAmber.copy(0.3f),
+                        RoundedCornerShape(8.dp)
+                    )
+                    .clickable {
+                        isMorseMode = true
+                        focusManager.clearFocus()
+                        keyboardController?.hide()
+                    }
+                    .padding(16.dp)
+            ) {
+                if (morseText.isEmpty()) {
+                    Text(
+                        "... --- ...",
+                        color = PipAmber.copy(0.5f),
+                        fontFamily = FontFamily.Monospace
+                    )
+                }
+                Text(
+                    text = morseText,
+                    color = PipAmber,
+                    fontSize = 20.sp,
+                    fontFamily = FontFamily.Monospace,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())
+                )
+            }
+
+            // --- 3. TACTICAL KEYPAD ---
+            if (isMorseMode) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().height(80.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Icon(Icons.Default.Clear, null, tint = PipBlack, modifier = Modifier.size(32.dp))
+                    TacticalButton(".", 1f) { convertToPlain(morseText + ".") }
+                    TacticalButton("-", 1f) { convertToPlain(morseText + "-") }
+                    TacticalButton("Boşluk", 1f) { convertToPlain(morseText + " ") }
+
+                    Box(
+                        modifier = Modifier.weight(0.8f).fillMaxHeight()
+                            .background(PipRed, RoundedCornerShape(8.dp))
+                            .border(2.dp, PipRed, RoundedCornerShape(8.dp))
+                            .clickable {
+                                if (morseText.isNotEmpty()) {
+                                    val newText =
+                                        if (morseText.endsWith(" ")) morseText.dropLast(1) else morseText.dropLast(
+                                            1
+                                        )
+                                    convertToPlain(newText)
+                                }
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Default.Clear,
+                            null,
+                            tint = PipBlack,
+                            modifier = Modifier.size(32.dp)
+                        )
+                    }
                 }
             }
         }

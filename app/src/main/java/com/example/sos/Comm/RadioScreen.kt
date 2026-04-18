@@ -24,6 +24,7 @@ import com.example.sos.Morse.ScreenHeader
 import com.example.sos.PipAmber
 import com.example.sos.PipBlack
 import com.example.sos.PipRed
+import com.example.sos.SosScreenScaffold
 
 data class RadioFrequency(
     val freq: String,
@@ -77,26 +78,17 @@ fun RadioScreen(onBack: () -> Unit) {
     var selectedFreq by remember { mutableStateOf<RadioFrequency?>(null) }
     var showMaydayGuide by remember { mutableStateOf(false) }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(PipBlack)
-            .imePadding()
-            .systemBarsPadding()
+    SosScreenScaffold(
+        title = "RADYO FREKANSLARI",
+        subtitle = "Acil durum iletişim kanalları",
+        accentColor = PipAmber,
+        onBack = onBack
     ) {
-        // --- HEADER ---
-        ScreenHeader(
-            title = "Radyo Frekansları",
-            subtitle = "Kullanılabilir frekanslar",
-            onBack = onBack
-        )
-
         LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 8.dp),
+            modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(6.dp),
-            contentPadding = PaddingValues(bottom = 24.dp, top = 8.dp)
+            // Moved your 8.dp horizontal padding into contentPadding!
+            contentPadding = PaddingValues(start = 0.dp, end = 0.dp, top = 16.dp, bottom = 24.dp)
         ) {
             // MAYDAY GUIDE BUTTON
             item {

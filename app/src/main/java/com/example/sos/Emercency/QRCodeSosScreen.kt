@@ -32,9 +32,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import com.example.sos.Morse.ScreenHeader
-import com.example.sos.PipAmber
-import com.example.sos.PipBlack
-import com.example.sos.PipGreen
+import com.example.sos.*
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.EncodeHintType
 import com.google.zxing.qrcode.QRCodeWriter
@@ -101,13 +99,20 @@ fun QRCodeSosScreen(onBack: () -> Unit) {
         }
     }
 
-    Column(modifier = Modifier.fillMaxSize().background(PipBlack).imePadding().systemBarsPadding()) {
-        ScreenHeader(title = "QR SOS", subtitle = "QR kod acil mesaj", onBack = onBack)
-
+    SosScreenScaffold(
+        title = "QR SOS",
+        subtitle = "QR kod acil mesajı gönderin",
+        accentColor = PipAmber,
+        onBack = onBack
+    ) {
         Column(
-            modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            modifier = Modifier
+                .fillMaxSize()
+                //.padding(8.dp), // Restoring your 8dp wide padding
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(SosSpaceMd)
         ) {
+            Spacer(modifier = Modifier.height(SosSpaceSm))
             // GPS status
             Box(Modifier.fillMaxWidth().border(1.dp, PipAmber.copy(if (hasGps) 0.6f else 0.3f), RoundedCornerShape(4.dp)).padding(10.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {

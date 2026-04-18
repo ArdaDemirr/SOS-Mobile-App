@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.sp
 import com.example.sos.PipAmber
 import com.example.sos.PipBlack
 import com.example.sos.PipRed
+import com.example.sos.SosScreenScaffold
 import kotlin.math.cos
 import kotlin.math.sin
 
@@ -119,6 +120,7 @@ fun CompassScreen(onBack: () -> Unit) {
                     }
                 }
             }
+
             override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
         }
 
@@ -143,198 +145,205 @@ fun CompassScreen(onBack: () -> Unit) {
         else -> "?"
     }
 
-    // --- MAIN LAYOUT ---
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(PipBlack)
-            .systemBarsPadding()
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+    SosScreenScaffold(
+        title = "Pusula",
+        subtitle = "MANYETİK YÖN BULMA",
+        accentColor = PipAmber,
+        onBack = onBack
     ) {
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
 
-        // 1. HEADER
-        Column(modifier = Modifier.fillMaxWidth()) {
-            Row(
-                modifier = Modifier.fillMaxWidth().height(60.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(50.dp)
-                        .background(PipAmber, RoundedCornerShape(8.dp))
-                        .clickable { onBack() },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(Icons.Default.ArrowBack, null, tint = PipBlack)
-                }
-                Spacer(modifier = Modifier.width(16.dp))
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // 2. DATA READOUT
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
-                    text = "Pusula",
-                    color = PipAmber,
-                    fontSize = 24.sp,
+                    directionText,
+                    color = if (isCalibrating) PipRed else PipAmber,
+                    fontSize = 60.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = FontFamily.Monospace
+                )
+                Text(
+                    "$displayAzimuth°",
+                    color = if (isCalibrating) PipRed else PipAmber,
+                    fontSize = 30.sp,
+                    fontFamily = FontFamily.Monospace
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    if (isCalibrating) "MODE: LEARNING..." else if (isCalibrated) "MODE: LOCKED" else "UNCALIBRATED",
+                    color = if (isCalibrating) PipRed else Color.Gray,
+                    fontSize = 14.sp,
                     fontFamily = FontFamily.Monospace,
                     fontWeight = FontWeight.Bold
                 )
             }
-            Spacer(modifier = Modifier.height(8.dp))
-            Divider(color = PipAmber, thickness = 2.dp)
-        }
 
-        Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(30.dp))
 
-        // 2. DATA READOUT
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(directionText, color = if (isCalibrating) PipRed else PipAmber, fontSize = 60.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
-            Text("$displayAzimuth°", color = if (isCalibrating) PipRed else PipAmber, fontSize = 30.sp, fontFamily = FontFamily.Monospace)
+            // 3. THE COMPASS RING
+            Box(
+                modifier = Modifier
+                    .size(300.dp)
+                    .border(2.dp, if (isCalibrating) PipRed else PipAmber, CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Canvas(modifier = Modifier.fillMaxSize()) {
+                    val radius = size.minDimension / 2
+                    val center = center
 
-            Spacer(modifier = Modifier.height(8.dp))
+                    val paint = Paint().apply {
+                        textAlign = Paint.Align.CENTER
+                        typeface = Typeface.MONOSPACE
+                        isFakeBoldText = true
+                    }
 
-            Text(
-                if (isCalibrating) "MODE: LEARNING..." else if (isCalibrated) "MODE: LOCKED" else "UNCALIBRATED",
-                color = if (isCalibrating) PipRed else Color.Gray,
-                fontSize = 14.sp,
-                fontFamily = FontFamily.Monospace,
-                fontWeight = FontWeight.Bold
-            )
-        }
+                    // Rotate dial
+                    rotate(-azimuth) {
 
-        Spacer(modifier = Modifier.height(30.dp))
+                        // STEP: Draw every 3 degrees
+                        for (i in 0 until 360 step 3) {
+                            val isMajor = i % 90 == 0 // N, E, S, W
+                            val isMid = i % 45 == 0 // NE, SE, SW, NW
+                            val isNum = i % 30 == 0 // 30, 60, 120...
 
-        // 3. THE COMPASS RING
-        Box(
-            modifier = Modifier
-                .size(300.dp)
-                .border(2.dp, if (isCalibrating) PipRed else PipAmber, CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            Canvas(modifier = Modifier.fillMaxSize()) {
-                val radius = size.minDimension / 2
-                val center = center
-
-                val paint = Paint().apply {
-                    textAlign = Paint.Align.CENTER
-                    typeface = Typeface.MONOSPACE
-                    isFakeBoldText = true
-                }
-
-                // Rotate dial
-                rotate(-azimuth) {
-
-                    // STEP: Draw every 3 degrees
-                    for (i in 0 until 360 step 3) {
-                        val isMajor = i % 90 == 0 // N, E, S, W
-                        val isMid   = i % 45 == 0 // NE, SE, SW, NW
-                        val isNum   = i % 30 == 0 // 30, 60, 120...
-
-                        // Tick Logic
-                        val tickLength = when {
-                            isMajor -> 40f
-                            isMid -> 30f
-                            isNum -> 25f
-                            else -> 15f
-                        }
-
-                        val tickColor = if (i == 0) PipRed else PipAmber
-                        val strokeW = if (isMajor) 4f else if (isMid || isNum) 3f else 1.5f
-
-                        // Draw Tick
-                        rotate(i.toFloat()) {
-                            drawLine(
-                                color = tickColor,
-                                start = Offset(center.x, center.y - radius),
-                                end = Offset(center.x, center.y - radius + tickLength),
-                                strokeWidth = strokeW
-                            )
-                        }
-
-                        // Draw Text Labels (Labels & Degrees)
-                        if (isMajor || isMid || isNum) {
-                            val angleRad = Math.toRadians((i - 90).toDouble())
-                            val textDist = radius - 70f // Pushes text slightly deeper for cleanliness
-
-                            val tx = center.x + (textDist * cos(angleRad)).toFloat()
-
-                            // Calculate Label
-                            val label = when {
-                                i == 0 -> "N"
-                                i == 45 -> "NE"
-                                i == 90 -> "E"
-                                i == 135 -> "SE"
-                                i == 180 -> "S"
-                                i == 225 -> "SW"
-                                i == 270 -> "W"
-                                i == 315 -> "NW"
-                                else -> i.toString()
+                            // Tick Logic
+                            val tickLength = when {
+                                isMajor -> 40f
+                                isMid -> 30f
+                                isNum -> 25f
+                                else -> 15f
                             }
 
-                            // Set Size & Color
-                            when {
-                                i == 0 -> { paint.color = PipRed.toArgb(); paint.textSize = 50f }
-                                isMajor -> { paint.color = PipAmber.toArgb(); paint.textSize = 50f }
-                                isMid -> { paint.color = PipAmber.toArgb(); paint.textSize = 35f }
-                                else -> { paint.color = PipAmber.toArgb(); paint.textSize = 28f }
+                            val tickColor = if (i == 0) PipRed else PipAmber
+                            val strokeW = if (isMajor) 4f else if (isMid || isNum) 3f else 1.5f
+
+                            // Draw Tick
+                            rotate(i.toFloat()) {
+                                drawLine(
+                                    color = tickColor,
+                                    start = Offset(center.x, center.y - radius),
+                                    end = Offset(center.x, center.y - radius + tickLength),
+                                    strokeWidth = strokeW
+                                )
                             }
 
-                            // PERFECT VERTICAL CENTERING MATH
-                            // We measure the text to find its visual center, then subtract that from the target point.
-                            // Ascent is negative (up), Descent is positive (down).
-                            // Center offset = (Descent + Ascent) / 2
-                            val vOffset = (paint.descent() + paint.ascent()) / 2f
-                            val ty = center.y + (textDist * sin(angleRad)).toFloat() - vOffset
+                            // Draw Text Labels (Labels & Degrees)
+                            if (isMajor || isMid || isNum) {
+                                val angleRad = Math.toRadians((i - 90).toDouble())
+                                val textDist =
+                                    radius - 70f // Pushes text slightly deeper for cleanliness
 
-                            drawIntoCanvas {
-                                it.nativeCanvas.drawText(label, tx, ty, paint)
+                                val tx = center.x + (textDist * cos(angleRad)).toFloat()
+
+                                // Calculate Label
+                                val label = when {
+                                    i == 0 -> "N"
+                                    i == 45 -> "NE"
+                                    i == 90 -> "E"
+                                    i == 135 -> "SE"
+                                    i == 180 -> "S"
+                                    i == 225 -> "SW"
+                                    i == 270 -> "W"
+                                    i == 315 -> "NW"
+                                    else -> i.toString()
+                                }
+
+                                // Set Size & Color
+                                when {
+                                    i == 0 -> {
+                                        paint.color = PipRed.toArgb(); paint.textSize = 50f
+                                    }
+
+                                    isMajor -> {
+                                        paint.color = PipAmber.toArgb(); paint.textSize = 50f
+                                    }
+
+                                    isMid -> {
+                                        paint.color = PipAmber.toArgb(); paint.textSize = 35f
+                                    }
+
+                                    else -> {
+                                        paint.color = PipAmber.toArgb(); paint.textSize = 28f
+                                    }
+                                }
+
+                                // PERFECT VERTICAL CENTERING MATH
+                                // We measure the text to find its visual center, then subtract that from the target point.
+                                // Ascent is negative (up), Descent is positive (down).
+                                // Center offset = (Descent + Ascent) / 2
+                                val vOffset = (paint.descent() + paint.ascent()) / 2f
+                                val ty = center.y + (textDist * sin(angleRad)).toFloat() - vOffset
+
+                                drawIntoCanvas {
+                                    it.nativeCanvas.drawText(label, tx, ty, paint)
+                                }
                             }
                         }
                     }
+
+                    // Fixed Pointer
+                    drawLine(
+                        color = Color.White,
+                        start = Offset(center.x, center.y - radius - 20),
+                        end = Offset(center.x, center.y - radius + 30),
+                        strokeWidth = 6f
+                    )
+
+                    // Crosshair
+                    drawLine(
+                        color = PipAmber.copy(0.3f),
+                        start = Offset(center.x - 20, center.y),
+                        end = Offset(center.x + 20, center.y),
+                        strokeWidth = 2f
+                    )
+                    drawLine(
+                        color = PipAmber.copy(0.3f),
+                        start = Offset(center.x, center.y - 20),
+                        end = Offset(center.x, center.y + 20),
+                        strokeWidth = 2f
+                    )
                 }
-
-                // Fixed Pointer
-                drawLine(
-                    color = Color.White,
-                    start = Offset(center.x, center.y - radius - 20),
-                    end = Offset(center.x, center.y - radius + 30),
-                    strokeWidth = 6f
-                )
-
-                // Crosshair
-                drawLine(color = PipAmber.copy(0.3f), start = Offset(center.x - 20, center.y), end = Offset(center.x + 20, center.y), strokeWidth = 2f)
-                drawLine(color = PipAmber.copy(0.3f), start = Offset(center.x, center.y - 20), end = Offset(center.x, center.y + 20), strokeWidth = 2f)
             }
-        }
 
-        Spacer(modifier = Modifier.weight(1f))
+            Spacer(modifier = Modifier.weight(1f))
 
-        // 4. BUTTON
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(60.dp)
-                .background(if (isCalibrating) PipRed else Color.Transparent)
-                .border(2.dp, if(isCalibrating) PipRed else PipAmber)
-                .clickable {
-                    if (isCalibrating) {
-                        isCalibrating = false
-                        with(prefs.edit()) {
-                            putFloat("xMin", xMin); putFloat("xMax", xMax)
-                            putFloat("yMin", yMin); putFloat("yMax", yMax)
-                            apply()
+            // 4. BUTTON
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(60.dp)
+                    .background(if (isCalibrating) PipRed else Color.Transparent)
+                    .border(2.dp, if (isCalibrating) PipRed else PipAmber)
+                    .clickable {
+                        if (isCalibrating) {
+                            isCalibrating = false
+                            with(prefs.edit()) {
+                                putFloat("xMin", xMin); putFloat("xMax", xMax)
+                                putFloat("yMin", yMin); putFloat("yMax", yMax)
+                                apply()
+                            }
+                        } else {
+                            isCalibrating = true
+                            xMin = 1000f; xMax = -1000f; yMin = 1000f; yMax = -1000f
                         }
-                    } else {
-                        isCalibrating = true
-                        xMin = 1000f; xMax = -1000f; yMin = 1000f; yMax = -1000f
-                    }
-                },
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                if (isCalibrating) "LOCK CONFIGURATION" else "UNLOCK & CALIBRATE",
-                color = if(isCalibrating) Color.White else PipAmber,
-                fontFamily = FontFamily.Monospace,
-                fontWeight = FontWeight.Bold,
-                fontSize = 18.sp
-            )
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    if (isCalibrating) "LOCK CONFIGURATION" else "UNLOCK & CALIBRATE",
+                    color = if (isCalibrating) Color.White else PipAmber,
+                    fontFamily = FontFamily.Monospace,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp
+                )
+            }
         }
     }
 }

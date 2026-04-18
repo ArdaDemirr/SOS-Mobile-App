@@ -32,9 +32,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.sos.PipAmber
-import com.example.sos.PipBlack
-import com.example.sos.PipRed
+import com.example.sos.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.text.iterator
@@ -102,15 +100,20 @@ fun VibrationMorseScreen(onBack: () -> Unit) {
         isPlaying = false
     }
 
-    Column(
-        modifier = Modifier.fillMaxSize().background(PipBlack).systemBarsPadding().imePadding()
+    SosScreenScaffold(
+        title = "TİTREŞİM-MORS",
+        subtitle = "Taktiksel Haptik Geri Bildirim",
+        accentColor = PipAmber,
+        onBack = onBack
     ) {
-        ScreenHeader(title = "Titreşim-Morse", subtitle = "Titreşimler ile morse kodu tanımlama", onBack = onBack)
-
         Column(
-            modifier = Modifier.fillMaxSize().padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 8.dp)
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(SosSpaceMd)
         ) {
+            Spacer(modifier = Modifier.height(4.dp))
             // Input field
             Text("METİN GİR:", color = PipAmber.copy(alpha = 0.7f), fontFamily = FontFamily.Monospace, fontSize = 11.sp)
             Box(

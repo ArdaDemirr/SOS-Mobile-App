@@ -18,11 +18,12 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
@@ -32,21 +33,19 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
-import com.example.sos.PipAmber
-import com.example.sos.PipBlack
-import com.example.sos.PipRed
+import com.example.sos.* // Pulls PipAmber, PipBlack, PipRed, SosScreenScaffold
 import java.util.concurrent.Executors
 
 /**
- * CameraMorseScreen — Uses CameraX ImageAnalysis to detect light flashing patterns.
- * Analyzes per-frame luminance averages and decodes bright/dark transitions
- * into morse code timing → dots, dashes, letters.
+ * CameraMorseScreen — Tactical Light-Pattern Decoder.
+ * Uses ImageAnalysis to detect luminance transitions and decodes via MorseUtil.
  */
 @Composable
 fun CameraMorseScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
 
+    // --- STATE ---
     var hasPermission by remember {
         mutableStateOf(ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED)
     }
@@ -61,12 +60,13 @@ fun CameraMorseScreen(onBack: () -> Unit) {
     val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
     val previewView = remember { PreviewView(context) }
 
-    // Morse decode state (mutable outside to update from analysis callback)
+    // Logic state
     val toneStartMs = remember { mutableStateOf(0L) }
     val silenceStartMs = remember { mutableStateOf(0L) }
     val prevBright = remember { mutableStateOf(false) }
     val symbolBuilder = remember { StringBuilder() }
 
+    // --- CAMERA ENGINE ---
     DisposableEffect(hasPermission, isAnalyzing) {
         if (!hasPermission || !isAnalyzing) return@DisposableEffect onDispose {}
 
@@ -80,7 +80,7 @@ fun CameraMorseScreen(onBack: () -> Unit) {
             }
 
             val imageAnalysis = ImageAnalysis.Builder()
-                .setTargetResolution(Size(320, 240)) // Low res = faster analysis
+                .setTargetResolution(Size(320, 240))
                 .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                 .build()
 
@@ -90,33 +90,29 @@ fun CameraMorseScreen(onBack: () -> Unit) {
 
                 val bright = lum > threshold
                 val now = System.currentTimeMillis()
-
                 currentLuminance = lum
 
                 if (bright && !prevBright.value) {
-                    // Light ON
+                    // Light transitioned ON
                     toneStartMs.value = now
                     if (silenceStartMs.value > 0) {
                         val silenceMs = now - silenceStartMs.value
-                        when {
-                            silenceMs >= MorseTiming.WORD_SILENCE_MS -> {
-                                val letter = decodeMorseSymbol(symbolBuilder.toString())
-                                if (letter != null) decodedText += letter
-                                decodedText += " "
-                                currentMorse += " / "
-                                symbolBuilder.clear()
-                            }
-                            silenceMs >= MorseTiming.LETTER_SILENCE_MS -> {
-                                val letter = decodeMorseSymbol(symbolBuilder.toString())
-                                if (letter != null) decodedText += letter
-                                currentMorse += " "
-                                symbolBuilder.clear()
-                            }
+                        // Use MorseTiming constants from MorseUtil
+                        if (silenceMs >= MorseTiming.WORD_SILENCE_MS && symbolBuilder.isNotEmpty()) {
+                            val letter = decodeMorseSymbol(symbolBuilder.toString()) ?: ""
+                            decodedText += "$letter "
+                            currentMorse += " / "
+                            symbolBuilder.clear()
+                        } else if (silenceMs >= MorseTiming.LETTER_SILENCE_MS && symbolBuilder.isNotEmpty()) {
+                            val letter = decodeMorseSymbol(symbolBuilder.toString()) ?: ""
+                            decodedText += letter
+                            currentMorse += " "
+                            symbolBuilder.clear()
                         }
                         silenceStartMs.value = 0
                     }
                 } else if (!bright && prevBright.value) {
-                    // Light OFF
+                    // Light transitioned OFF
                     silenceStartMs.value = now
                     val durationMs = now - toneStartMs.value
                     val symbol = if (durationMs >= MorseTiming.DOT_DASH_BOUNDARY_MS) "-" else "."
@@ -125,60 +121,91 @@ fun CameraMorseScreen(onBack: () -> Unit) {
                 }
 
                 prevBright.value = bright
-                statusText = if (bright) "● IŞIK ALGILANDI" else "○ KARANLK"
+                statusText = if (bright) "● SINYAL ALGILANDI" else "○ TERMINAL BEKLEMEDE"
             }
 
             try {
                 cameraProvider.unbindAll()
-                cameraProvider.bindToLifecycle(
-                    lifecycleOwner,
-                    CameraSelector.DEFAULT_BACK_CAMERA,
-                    preview,
-                    imageAnalysis
-                )
+                cameraProvider.bindToLifecycle(lifecycleOwner, CameraSelector.DEFAULT_BACK_CAMERA, preview, imageAnalysis)
             } catch (e: Exception) {
-                statusText = "KAMERA HATASI: ${e.message}"
+                statusText = "SISTEM HATASI: ${e.message}"
             }
         }, ContextCompat.getMainExecutor(context))
 
         onDispose {
-            ProcessCameraProvider.getInstance(context).get()?.unbindAll()
+            cameraProviderFuture.get()?.unbindAll()
             cameraExecutor.shutdown()
         }
     }
 
-    Column(
-        modifier = Modifier.fillMaxSize().background(PipBlack).systemBarsPadding()
+    // --- UI LAYOUT ---
+    SosScreenScaffold(
+        title = "KAMERA-MORS",
+        subtitle = "Optik Sinyal Çözümleme",
+        accentColor = PipAmber,
+        onBack = onBack
     ) {
-        ScreenHeader(title = "Kamera-Morse", subtitle = "Kamera ile Morse Okuma", onBack = onBack)
-
         Column(
-            modifier = Modifier.fillMaxSize().padding(16.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 8.dp) // Tactical 8dp padding
+                .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
+            Spacer(modifier = Modifier.height(4.dp))
+
             if (!hasPermission) {
                 Box(modifier = Modifier.fillMaxWidth().border(2.dp, PipRed, RectangleShape).padding(16.dp), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("KAMERA İZNİ GEREKLİ", color = PipRed, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
-                        Spacer(Modifier.height(8.dp))
-                        Box(Modifier.Companion.background(PipAmber, RoundedCornerShape(4.dp)).clickable { permLauncher.launch(Manifest.permission.CAMERA) }.padding(10.dp)) {
+                        Text("KAMERA ERİŞİMİ GEREKLİ", color = PipRed, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
+                        Spacer(Modifier.height(12.dp))
+                        Box(Modifier.background(PipAmber, RoundedCornerShape(4.dp)).clickable { permLauncher.launch(Manifest.permission.CAMERA) }.padding(horizontal = 16.dp, vertical = 8.dp)) {
                             Text("İZİN VER", color = PipBlack, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
             } else {
-                // Camera preview
+                // 1. Tactical Camera Feed
+                // 1. Tactical Camera Feed
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(160.dp)
-                        .border(2.dp, if (isAnalyzing) PipAmber else PipAmber.copy(0.3f), RectangleShape)
+                        .height(180.dp)
+                        .background(PipBlack) // Ensures a clean black base
+                        .border(2.dp, if (isAnalyzing) PipAmber else PipAmber.copy(0.2f), RectangleShape)
+                        .clip(RectangleShape),
+                    contentAlignment = Alignment.Center
                 ) {
-                    AndroidView(
-                        factory = { previewView },
-                        modifier = Modifier.fillMaxSize()
-                    )
-                    // Luminance overlay
+                    if (isAnalyzing && hasPermission) {
+                        // Only compose the camera view when active
+                        AndroidView(
+                            factory = {
+                                previewView.apply {
+                                    scaleType = PreviewView.ScaleType.FILL_CENTER
+                                }
+                            },
+                            modifier = Modifier.fillMaxSize().clip(RectangleShape)
+                        )
+                    } else {
+                        // Tactical placeholder when camera is "powered down"
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                text = "KAMERA KAPALI",
+                                color = PipAmber.copy(0.3f),
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "Görüntü Bekleniyor...",
+                                color = PipAmber.copy(0.15f),
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 10.sp
+                            )
+                        }
+                    }
+
+                    // Real-time luminance bar (Always stays at bottom of the frame)
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -189,62 +216,70 @@ fun CameraMorseScreen(onBack: () -> Unit) {
                         Box(
                             modifier = Modifier
                                 .fillMaxHeight()
-                                .fillMaxWidth((currentLuminance / 255.0).toFloat().coerceIn(0f, 1f))
-                                .background(if (currentLuminance > threshold) PipAmber else PipAmber.copy(0.3f))
+                                .fillMaxWidth(if(isAnalyzing) (currentLuminance / 255.0).toFloat().coerceIn(0f, 1f) else 0f)
+                                .background(if (currentLuminance > threshold && isAnalyzing) PipAmber else PipAmber.copy(0.2f))
                         )
                     }
                 }
 
-                // Threshold slider-like control
+                // 2. Threshold Calibration
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Text("EŞİK: ${threshold.toInt()}", color = PipAmber, fontFamily = FontFamily.Monospace, fontSize = 12.sp)
+                    Text("HASSASİYET EŞİĞİ: ${threshold.toInt()}", color = PipAmber, fontFamily = FontFamily.Monospace, fontSize = 12.sp)
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        listOf(-20, -5, +5, +20).forEach { delta ->
+                        listOf(-20, +20).forEach { delta ->
                             Box(
-                                Modifier.Companion.background(PipAmber.copy(0.2f), RoundedCornerShape(3.dp))
-                                    .clickable { threshold = (threshold + delta).coerceIn(50.0, 230.0) }
-                                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                                Modifier.background(PipAmber.copy(0.1f), RoundedCornerShape(3.dp))
+                                    .border(1.dp, PipAmber.copy(0.3f), RoundedCornerShape(3.dp))
+                                    .clickable { threshold = (threshold + delta).coerceIn(40.0, 240.0) }
+                                    .padding(horizontal = 10.dp, vertical = 6.dp)
                             ) {
-                                Text(if (delta > 0) "+$delta" else "$delta", color = PipAmber, fontFamily = FontFamily.Monospace, fontSize = 11.sp)
+                                Text(if (delta > 0) "+$delta" else "$delta", color = PipAmber, fontFamily = FontFamily.Monospace, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                             }
                         }
                     }
                 }
             }
 
-            // Start/stop
+            // 3. System Controls
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
                 Box(
                     modifier = Modifier
-                        .weight(1f)
-                        .height(56.dp)
-                        .background(if (isAnalyzing) PipRed.copy(0.15f) else PipAmber.copy(0.1f), RoundedCornerShape(4.dp))
+                        .weight(1f).height(60.dp)
+                        .background(if (isAnalyzing) PipRed.copy(0.1f) else PipAmber.copy(0.05f), RoundedCornerShape(4.dp))
                         .border(2.dp, if (isAnalyzing) PipRed else PipAmber, RoundedCornerShape(4.dp))
                         .clickable { if (hasPermission) isAnalyzing = !isAnalyzing else permLauncher.launch(Manifest.permission.CAMERA) },
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(if (isAnalyzing) "■ DURDUR" else "● ANALİZ BAŞLAT", color = if (isAnalyzing) PipRed else PipAmber, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    Text(if (isAnalyzing) "■ ANALİZİ DURDUR" else "● OPTİK TARAMAYI BAŞLAT", color = if (isAnalyzing) PipRed else PipAmber, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
                 }
                 Box(
-                    Modifier.height(56.dp).background(PipAmber.copy(0.1f), RoundedCornerShape(4.dp)).border(1.dp, PipAmber.copy(0.5f), RoundedCornerShape(4.dp)).clickable { currentMorse = ""; decodedText = ""; symbolBuilder.clear() }.padding(horizontal = 14.dp),
+                    Modifier.height(60.dp).background(PipAmber.copy(0.05f), RoundedCornerShape(4.dp)).border(1.dp, PipAmber.copy(0.3f), RoundedCornerShape(4.dp))
+                        .clickable { currentMorse = ""; decodedText = ""; symbolBuilder.clear() }.padding(horizontal = 20.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("SİL", color = PipAmber, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
+                    Text("TEMİZLE", color = PipAmber, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
                 }
             }
 
             Text(statusText, color = PipAmber.copy(0.6f), fontFamily = FontFamily.Monospace, fontSize = 11.sp)
-            Divider(color = PipAmber.copy(0.3f))
+            HorizontalDivider(color = PipAmber.copy(0.2f), thickness = 1.dp)
 
-            Text("ALGILANAN MORS:", color = PipAmber.copy(0.7f), fontFamily = FontFamily.Monospace, fontSize = 11.sp)
+            // 4. Data Outputs (Sharp Aesthetic)
+            Text("YAKALANAN SİNYAL:", color = PipAmber.copy(0.7f), fontFamily = FontFamily.Monospace, fontSize = 11.sp)
             Box(Modifier.fillMaxWidth().height(50.dp).border(1.dp, PipAmber.copy(0.4f), RectangleShape).padding(8.dp)) {
-                Text(currentMorse.takeLast(60).ifEmpty { "· · ·  — — —  · · ·" }, color = PipAmber.copy(if (currentMorse.isEmpty()) 0.3f else 1f), fontFamily = FontFamily.Monospace, fontSize = 18.sp, modifier = Modifier.verticalScroll(rememberScrollState()))
+                Text(currentMorse.takeLast(60).ifEmpty { "BEKLENİYOR..." }, color = PipAmber.copy(if (currentMorse.isEmpty()) 0.2f else 1f), fontFamily = FontFamily.Monospace, fontSize = 18.sp)
             }
 
-            Text("ÇÖZÜLEN METİN:", color = PipAmber.copy(0.7f), fontFamily = FontFamily.Monospace, fontSize = 11.sp)
-            Box(Modifier.fillMaxWidth().weight(1f).border(2.dp, PipAmber, RectangleShape).padding(12.dp)) {
-                Text(decodedText.ifEmpty { "Fener veya yansıma ışığını kameraya tutun..." }, color = PipAmber.copy(if (decodedText.isEmpty()) 0.3f else 1f), fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, fontSize = 20.sp, modifier = Modifier.verticalScroll(rememberScrollState()))
+            Text("DEŞİFRE METİN:", color = PipAmber.copy(0.7f), fontFamily = FontFamily.Monospace, fontSize = 11.sp)
+            Box(Modifier.fillMaxWidth().height(140.dp).border(2.dp, PipAmber, RectangleShape).padding(12.dp)) {
+                Text(decodedText.ifEmpty { "Işık kaynağını kadraja odaklayın..." }, color = PipAmber.copy(if (decodedText.isEmpty()) 0.2f else 1f), fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, fontSize = 20.sp)
             }
+
+            // 5. Tactical Footer
+            Box(Modifier.fillMaxWidth().border(1.dp, PipAmber.copy(0.1f), RectangleShape).padding(8.dp)) {
+                Text("Optik Veri Notu: Ortam ışığına göre eşik değerini (Threshold) ayarlayın. Parlak nesnelerin hareketi yanlış sinyal üretebilir.", color = PipAmber.copy(0.4f), fontFamily = FontFamily.Monospace, fontSize = 10.sp, lineHeight = 14.sp)
+            }
+            Spacer(modifier = Modifier.height(20.dp))
         }
     }
 }
@@ -254,13 +289,12 @@ private fun ImageProxy.averageLuminance(): Double {
     val buffer = planes[0].buffer
     val data = ByteArray(buffer.remaining())
     buffer.get(data)
-    // Sample every 8th pixel for performance
     var sum = 0L; var count = 0
     var i = 0
     while (i < data.size) {
         sum += (data[i].toInt() and 0xFF)
         count++
-        i += 8
+        i += 8 // Sample every 8th pixel for mobile performance
     }
     return if (count == 0) 0.0 else sum.toDouble() / count
 }

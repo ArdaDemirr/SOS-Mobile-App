@@ -101,8 +101,8 @@ class CrashService : Service(), SensorEventListener {
 
             val notification = NotificationCompat.Builder(this, "SOS_CHANNEL")
                 .setSmallIcon(R.drawable.ic_dialog_alert)
-                .setContentTitle("CRASH DETECTED")
-                .setContentText("Are you okay?")
+                .setContentTitle("Düşme Algılandı")
+                .setContentText("iyi misiniz?")
                 .setPriority(NotificationCompat.PRIORITY_MAX)
                 .setCategory(NotificationCompat.CATEGORY_ALARM)
                 .setFullScreenIntent(fullScreenPendingIntent, true) // Wakes screen

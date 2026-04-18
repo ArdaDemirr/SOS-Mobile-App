@@ -17,16 +17,15 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.sos.* // Pulls PipAmber, PipBlack, PipSurface, SosScreenScaffold, etc.
 import com.example.sos.database.AppDatabase
 import com.example.sos.database.ContactEntity
-import com.example.sos.Morse.ScreenHeader
-import com.example.sos.PipAmber
-import com.example.sos.PipBlack
-import com.example.sos.RetrofitInstance
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -38,12 +37,12 @@ import java.util.*
 fun ChatHubScreen(myUuid: String, onConversationClick: (String, String) -> Unit, onBack: () -> Unit) {
     val context = LocalContext.current
     val db = remember { AppDatabase.getDatabase(context) }
-    val myUuid = RetrofitInstance.currentUserUuid ?: "UNKNOWN"
+    // Ensure we don't accidentally shadow the parameter with the same name
+    val activeUuid = RetrofitInstance.currentUserUuid ?: "UNKNOWN"
     val scope = rememberCoroutineScope()
 
     var contacts by remember { mutableStateOf(listOf<ContactEntity>()) }
-    //val allMessages by db.messageDao().getAllMessagesFlow().collectAsState(initial = emptyList())
-    val allMessages by db.messageDao().getMyMessagesFlow(myUuid).collectAsState(initial = emptyList())
+    val allMessages by db.messageDao().getMyMessagesFlow(activeUuid).collectAsState(initial = emptyList())
     var showNewChatDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
@@ -51,16 +50,16 @@ fun ChatHubScreen(myUuid: String, onConversationClick: (String, String) -> Unit,
         contacts = withContext(Dispatchers.IO) { db.contactDao().getAllContacts() }
 
         // --- FETCH SERVER INBOX ON LAUNCH ---
-        if (myUuid != "UNKNOWN_USER") {
+        if (activeUuid != "UNKNOWN_USER") {
             withContext(Dispatchers.IO) {
                 try {
                     // 1. Get the High-Water Mark from SharedPreferences (NOT the DB)
                     val prefs = context.getSharedPreferences("tactical_prefs", Context.MODE_PRIVATE)
-                    val prefsKey = "LAST_SYNC_TIME_$myUuid"
+                    val prefsKey = "LAST_SYNC_TIME_$activeUuid"
                     val latestTime = prefs.getLong(prefsKey, 0L)
 
                     // 2. Pass it to the server!
-                    val response = RetrofitInstance.api.fetchInbox(myUuid, latestTime)
+                    val response = RetrofitInstance.api.fetchInbox(activeUuid, latestTime)
 
                     if (response.isSuccessful) {
                         var highestTimestampInBatch = latestTime
@@ -88,7 +87,7 @@ fun ChatHubScreen(myUuid: String, onConversationClick: (String, String) -> Unit,
 
     // Grouping messages into SMS threads
     val recentConversations = remember(allMessages, contacts) {
-        allMessages.groupBy { if (it.senderId == myUuid) it.targetId else it.senderId }
+        allMessages.groupBy { if (it.senderId == activeUuid) it.targetId else it.senderId }
             .mapNotNull { (partnerId, msgs) ->
                 val lastMsg = msgs.maxByOrNull { it.timestamp } ?: return@mapNotNull null
                 val partnerName = contacts.find { it.contactUuid == partnerId }?.displayName ?: "Unknown Node"
@@ -96,18 +95,21 @@ fun ChatHubScreen(myUuid: String, onConversationClick: (String, String) -> Unit,
             }.sortedByDescending { it.second.timestamp }
     }
 
-    Scaffold(
-        floatingActionButton = {
-            FloatingActionButton(onClick = { showNewChatDialog = true }, containerColor = PipAmber) {
-                Icon(Icons.Default.Add, contentDescription = "New", tint = PipBlack)
-            }
-        },
-        containerColor = PipBlack
-    ) { paddingValues ->
-        Column(modifier = Modifier.fillMaxSize().padding(paddingValues).systemBarsPadding()) {
-            ScreenHeader(title = "INBOX", subtitle = "SECURE MESH ACTIVE", onBack = onBack)
+    // ─── MASTER SCAFFOLD ────────────────────────────────────────────────────
+    SosScreenScaffold(
+        title = "INBOX",
+        subtitle = "SECURE MESH ACTIVE",
+        accentColor = PipAmber,
+        onBack = onBack
+    ) {
+        // We use a Box here so we can overlay the FAB at the bottom right
+        Box(modifier = Modifier.fillMaxSize()) {
 
-            LazyColumn(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 88.dp), // Extra bottom padding for the FAB
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 items(recentConversations) { (partnerInfo, lastMsg) ->
                     val (partnerId, partnerName) = partnerInfo
                     val timeString = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(lastMsg.timestamp))
@@ -115,55 +117,80 @@ fun ChatHubScreen(myUuid: String, onConversationClick: (String, String) -> Unit,
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(bottom = 8.dp)
-                            .border(1.dp, PipAmber, RoundedCornerShape(4.dp))
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(PipSurface) // Tactical surface color
+                            .border(1.dp, PipAmber.copy(0.4f), RoundedCornerShape(4.dp))
                             .clickable { onConversationClick(partnerId, partnerName) }
                             .padding(16.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
+                        // Avatar
                         Box(
-                            modifier = Modifier.size(40.dp).background(PipAmber.copy(0.1f), CircleShape).border(1.dp,
-                                PipAmber, CircleShape),
+                            modifier = Modifier
+                                .size(40.dp)
+                                .background(PipAmber.copy(0.1f), CircleShape)
+                                .border(1.dp, PipAmber, CircleShape),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text(partnerName.take(1).uppercase(), color = PipAmber, fontWeight = FontWeight.Bold)
-                        }
-                        Spacer(modifier = Modifier.width(16.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(partnerName, color = PipAmber, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                            Text(lastMsg.content, color = PipAmber.copy(0.7f), fontSize = 14.sp, maxLines = 1)
+                            Text(partnerName.take(1).uppercase(), color = PipAmber, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
                         }
 
+                        Spacer(modifier = Modifier.width(16.dp))
+
+                        // Message Details
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(partnerName, color = PipAmber, fontWeight = FontWeight.Bold, fontSize = 16.sp, fontFamily = FontFamily.Monospace)
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(lastMsg.content, color = PipTextSecondary, fontSize = 13.sp, maxLines = 1, fontFamily = FontFamily.Monospace)
+                        }
+
+                        // Time & Wipe Action
                         Column(horizontalAlignment = Alignment.End) {
-                            Text(timeString, color = PipAmber.copy(0.5f), fontSize = 10.sp)
+                            Text(timeString, color = PipAmber.copy(0.5f), fontSize = 10.sp, fontFamily = FontFamily.Monospace)
                             IconButton(
                                 onClick = {
                                     scope.launch(Dispatchers.IO) {
-                                        db.messageDao().deleteConversation(myUuid, partnerId)
+                                        db.messageDao().deleteConversation(activeUuid, partnerId)
                                     }
                                 },
                                 modifier = Modifier.size(32.dp)
                             ) {
-                                Icon(Icons.Default.Delete, contentDescription = "Wipe", tint = PipAmber)
+                                Icon(Icons.Default.Delete, contentDescription = "Wipe", tint = PipRed.copy(alpha = 0.8f))
                             }
                         }
                     }
                 }
             }
+
+            // ── TACTICAL FLOATING ACTION BUTTON ─────────────────────────────
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(16.dp)
+                    .size(56.dp)
+                    .clip(RoundedCornerShape(16.dp)) // Slightly squared FUI look
+                    .background(PipAmber)
+                    .clickable { showNewChatDialog = true },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Default.Add, contentDescription = "New Chat", tint = PipBlack, modifier = Modifier.size(28.dp))
+            }
         }
     }
 
+    // ─── NEW CHAT DIALOG ────────────────────────────────────────────────────
     if (showNewChatDialog) {
         AlertDialog(
             onDismissRequest = { showNewChatDialog = false },
             containerColor = PipBlack,
-            title = { Text("SELECT TARGET", color = PipAmber, fontWeight = FontWeight.Bold) },
+            title = { Text("SELECT TARGET", color = PipAmber, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace) },
             text = {
                 LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 300.dp)) {
                     items(contacts) { contact ->
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
+                                .clip(RoundedCornerShape(4.dp))
                                 .border(1.dp, PipAmber.copy(0.3f), RoundedCornerShape(4.dp))
                                 .clickable {
                                     showNewChatDialog = false
@@ -174,14 +201,16 @@ fun ChatHubScreen(myUuid: String, onConversationClick: (String, String) -> Unit,
                         ) {
                             Icon(Icons.Default.Person, contentDescription = null, tint = PipAmber)
                             Spacer(modifier = Modifier.width(12.dp))
-                            Text(contact.displayName, color = PipAmber, fontWeight = FontWeight.Bold)
+                            Text(contact.displayName, color = PipAmber, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
                         }
                         Spacer(modifier = Modifier.height(8.dp))
                     }
                 }
             },
             confirmButton = {
-                TextButton(onClick = { showNewChatDialog = false }) { Text("CANCEL", color = PipAmber) }
+                TextButton(onClick = { showNewChatDialog = false }) {
+                    Text("CANCEL", color = PipAmber, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
+                }
             }
         )
     }

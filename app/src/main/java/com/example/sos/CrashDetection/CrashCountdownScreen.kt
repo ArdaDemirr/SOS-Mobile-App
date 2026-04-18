@@ -88,7 +88,7 @@ fun CrashCountdownScreen(onCancel: () -> Unit, onTimeout: () -> Unit) {
     ) {
 
         Text(
-            text = "IMPACT DETECTED",
+            text = "DÜŞME ALGILANDI, iyi misiniz?",
             color = textColor,
             fontSize = 32.sp,
             fontFamily = FontFamily.Monospace,
@@ -115,7 +115,7 @@ fun CrashCountdownScreen(onCancel: () -> Unit, onTimeout: () -> Unit) {
         Spacer(modifier = Modifier.height(20.dp))
 
         Text(
-            text = "SENDING SOS...",
+            text = "Yardım İsteniyor...",
             color = textColor,
             fontSize = 20.sp,
             fontFamily = FontFamily.Monospace,
@@ -138,7 +138,7 @@ fun CrashCountdownScreen(onCancel: () -> Unit, onTimeout: () -> Unit) {
             contentAlignment = Alignment.Center
         ) {
             Text(
-                text = "I AM FINE - CANCEL",
+                text = "Ben iyiyim - iptal et",
                 color = Color.Black,
                 fontSize = 24.sp,
                 fontFamily = FontFamily.Monospace,

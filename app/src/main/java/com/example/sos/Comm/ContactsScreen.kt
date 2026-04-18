@@ -21,9 +21,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.sos.PipAmber
-import com.example.sos.PipBlack
-import com.example.sos.PipRed
+import com.example.sos.*
 import com.example.sos.database.AppDatabase
 import com.example.sos.database.ContactEntity
 import kotlinx.coroutines.Dispatchers
@@ -47,21 +45,37 @@ fun ContactsScreen(onBack: () -> Unit, onChat: (String, String) -> Unit) {
         contacts = withContext(Dispatchers.IO) { db.getAllContacts() }
     }
 
-    Column(Modifier.fillMaxSize().background(PipBlack).systemBarsPadding()) {
-        Row(
-            Modifier.fillMaxWidth().padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+    SosScreenScaffold(
+        title = "REHBER",
+        subtitle = "İletişim kurabileceğiniz kişileri yönetin",
+        accentColor = PipAmber,
+        onBack = onBack
+    ) {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            // Manual padding logic: 16.dp horizontal via contentPadding
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Text("DIRECTORY", color = PipAmber, fontSize = 24.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
-            IconButton(onClick = {
-                inputUuid = ""; inputName = ""; showAddDialog = true
-            }, modifier = Modifier.Companion.border(1.dp, PipAmber, RoundedCornerShape(4.dp))) {
-                Icon(Icons.Default.Add, "Add", tint = PipAmber)
+            item {
+                // ADD BUTTON (Moved to top of list to fit the tactical theme)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(PipAmber.copy(0.1f), RoundedCornerShape(4.dp))
+                        .border(1.dp, PipAmber.copy(0.5f), RoundedCornerShape(4.dp))
+                        .clickable { inputUuid = ""; inputName = ""; showAddDialog = true }
+                        .padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Spacer(modifier = Modifier.height(SosSpaceSm))
+                    Icon(Icons.Default.Add, null, tint = PipAmber, modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.width(12.dp))
+                    Text("Yeni Kişi Ekleyin", color = PipAmber, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
+                }
+                Spacer(Modifier.height(8.dp))
             }
-        }
 
-        LazyColumn(Modifier.weight(1f).padding(horizontal = 16.dp)) {
             items(contacts) { contact ->
                 ContactItem(
                     contact = contact,
@@ -73,12 +87,7 @@ fun ContactsScreen(onBack: () -> Unit, onChat: (String, String) -> Unit) {
                         }
                     }
                 )
-                Spacer(Modifier.height(8.dp))
             }
-        }
-
-        Box(Modifier.fillMaxWidth().height(60.dp).background(PipAmber).clickable { onBack() }, contentAlignment = Alignment.Center) {
-            Text("< RETURN <", color = PipBlack, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
         }
     }
 
@@ -86,23 +95,22 @@ fun ContactsScreen(onBack: () -> Unit, onChat: (String, String) -> Unit) {
         AlertDialog(
             onDismissRequest = { showAddDialog = false },
             containerColor = PipBlack,
-            title = { Text("NEW CONTACT", color = PipAmber, fontFamily = FontFamily.Monospace) },
+            title = { Text("Yeni Kişi", color = PipAmber, fontFamily = FontFamily.Monospace) },
             text = {
                 Column {
                     OutlinedTextField(
                         value = inputName, onValueChange = { inputName = it },
-                        label = { Text("DISPLAY NAME", color = PipAmber) },
+                        label = { Text("İsim", color = PipAmber) },
                         colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = PipAmber, unfocusedBorderColor = PipAmber.copy(0.5f), focusedTextColor = PipAmber)
                     )
                     Spacer(Modifier.height(8.dp))
                     OutlinedTextField(
                         value = inputUuid, onValueChange = { inputUuid = it },
-                        label = { Text("TARGET UUID", color = PipAmber) },
+                        label = { Text("Kişinin UUID'sini Girin", color = PipAmber) },
                         colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = PipAmber, unfocusedBorderColor = PipAmber.copy(0.5f), focusedTextColor = PipAmber)
                     )
                     Spacer(Modifier.height(8.dp))
 
-                    // --- NEW: PASTE BUTTON ---
                     Button(
                         onClick = {
                             val pasteText = clipboardManager.getText()?.text
@@ -111,9 +119,11 @@ fun ContactsScreen(onBack: () -> Unit, onChat: (String, String) -> Unit) {
                             }
                         },
                         modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(containerColor = PipAmber.copy(0.2f))
+                        shape = RoundedCornerShape(4.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = PipAmber.copy(0.15f)),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, PipAmber.copy(0.5f))
                     ) {
-                        Text("PASTE FROM CLIPBOARD", color = PipAmber, fontFamily = FontFamily.Monospace)
+                        Text("Yapıştır", color = PipAmber, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
                     }
                 }
             },
@@ -127,7 +137,7 @@ fun ContactsScreen(onBack: () -> Unit, onChat: (String, String) -> Unit) {
                         showAddDialog = false
                     }
                 }, colors = ButtonDefaults.buttonColors(containerColor = PipAmber)) {
-                    Text("SAVE", color = PipBlack)
+                    Text("Kaydet", color = PipBlack)
                 }
             }
         )

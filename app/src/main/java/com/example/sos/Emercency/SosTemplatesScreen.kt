@@ -13,12 +13,12 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
@@ -26,15 +26,11 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.sos.* // Pulls PipAmber, PipBlack, PipRed, SosRadiusSm, SosSpaceSm, SosScreenScaffold, etc.
 import com.example.sos.Morse.MorseTiming
-import com.example.sos.Morse.ScreenHeader
 import com.example.sos.Morse.encodeMorse
-import com.example.sos.PipAmber
-import com.example.sos.PipBlack
-import com.example.sos.PipRed
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlin.text.iterator
 
 private val defaultTemplates = listOf(
     "SOS" to "Acil yardım gerekiyor",
@@ -43,7 +39,7 @@ private val defaultTemplates = listOf(
     "KAYIP" to "Kayboldum, harita koordinatlarım nerede?",
     "BARINMA" to "Barınak arıyorum, fırtına geliyor",
     "YANGIN" to "Yangın var, tahliye edin!",
-    "SUBMERGEd" to "Sel tehlikesi, yüksek zemine çıkın"
+    "SEL" to "Sel tehlikesi, yüksek zemine çıkın"
 )
 
 @Composable
@@ -55,12 +51,11 @@ fun SosTemplatesScreen(onBack: () -> Unit) {
     var templates by remember {
         mutableStateOf(
             defaultTemplates.map { (code, text) -> code to text } +
-            (prefs.getString("custom", "")?.split("||")?.filter { it.contains(":") }
-                ?.map { it.substringBefore(":") to it.substringAfter(":") } ?: emptyList())
+                    (prefs.getString("custom", "")?.split("||")?.filter { it.contains(":") }
+                        ?.map { it.substringBefore(":") to it.substringAfter(":") } ?: emptyList())
         )
     }
     var isFlashing by remember { mutableStateOf(false) }
-    var isVibrating by remember { mutableStateOf(false) }
     var activeTemplate by remember { mutableStateOf<Pair<String,String>?>(null) }
     var newLabel by remember { mutableStateOf("") }
     var newText by remember { mutableStateOf("") }
@@ -78,10 +73,8 @@ fun SosTemplatesScreen(onBack: () -> Unit) {
             try {
                 for (ch in morse) {
                     when (ch) {
-                        '.' -> { flash(cameraManager, cameraId, MorseTiming.DOT_MS); delay(
-                            MorseTiming.SYMBOL_GAP_MS) }
-                        '-' -> { flash(cameraManager, cameraId, MorseTiming.DASH_MS); delay(
-                            MorseTiming.SYMBOL_GAP_MS) }
+                        '.' -> { flash(cameraManager, cameraId, MorseTiming.DOT_MS); delay(MorseTiming.SYMBOL_GAP_MS) }
+                        '-' -> { flash(cameraManager, cameraId, MorseTiming.DASH_MS); delay(MorseTiming.SYMBOL_GAP_MS) }
                         ' ' -> delay(MorseTiming.LETTER_GAP_MS)
                         '/' -> delay(MorseTiming.WORD_GAP_MS)
                     }
@@ -92,80 +85,106 @@ fun SosTemplatesScreen(onBack: () -> Unit) {
         }
     }
 
-    Column(modifier = Modifier.fillMaxSize().background(PipBlack).imePadding().systemBarsPadding()) {
-        ScreenHeader(
-            title = "SOS Şablonları",
-            subtitle = "Onceden kayıtlı mesajlar",
-            onBack = onBack
-        )
-
+    // ─── MASTER SCAFFOLD ────────────────────────────────────────────────────
+    SosScreenScaffold(
+        title = "SOS Şablonları",
+        subtitle = "Kayıtlı acil durum mesajları",
+        accentColor = PipAmber,
+        onBack = onBack
+    ) {
         LazyColumn(
-            modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp),
+            modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(6.dp),
-            contentPadding = PaddingValues(bottom = 24.dp, top = 8.dp)
+            contentPadding = PaddingValues(
+                start = 0.dp,
+                end = 0.dp,
+                top = 16.dp,
+                bottom = 24.dp
+            )
         ) {
             item {
-                // Add button
+                // Add button section
                 Row(
-                    modifier = Modifier.fillMaxWidth().border(1.dp, PipAmber.copy(0.5f), RoundedCornerShape(4.dp)).clickable { showAdd = !showAdd }.padding(10.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(SosRadiusSm))
+                        .background(PipBlack)
+                        .border(1.dp, PipAmber.copy(alpha = 0.5f), RoundedCornerShape(SosRadiusSm))
+                        .clickable { showAdd = !showAdd }
+                        .padding(SosSpaceSm),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(Icons.Default.Add, null, tint = PipAmber, modifier = Modifier.size(16.dp))
-                    Spacer(Modifier.width(8.dp))
+                    Spacer(Modifier.width(SosSpaceSm))
                     Text("YENİ ŞABLON EKLE", color = PipAmber, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                 }
 
                 if (showAdd) {
                     Column(modifier = Modifier.padding(top = 6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        PipTextField(value = newLabel, onValueChange = { newLabel = it.uppercase() }, placeholder = "ETIKET (örn. TUZAK)")
+                        PipTextField(value = newLabel, onValueChange = { newLabel = it.uppercase() }, placeholder = "ETİKET (ÖRN. TUZAK)")
                         PipTextField(value = newText, onValueChange = { newText = it }, placeholder = "Açıklama metni")
                         Box(
-                            Modifier.fillMaxWidth().background(PipAmber, RoundedCornerShape(4.dp)).clickable {
-                                if (newLabel.isNotEmpty()) {
-                                    templates = templates + (newLabel to newText)
-                                    val custom = templates.drop(defaultTemplates.size).joinToString("||") { "${it.first}:${it.second}" }
-                                    prefs.edit().putString("custom", custom).apply()
-                                    newLabel = ""; newText = ""; showAdd = false
-                                }
-                            }.padding(10.dp),
+                            Modifier
+                                .fillMaxWidth()
+                                .height(44.dp)
+                                .clip(RoundedCornerShape(SosRadiusSm))
+                                .background(PipAmber)
+                                .clickable {
+                                    if (newLabel.isNotEmpty()) {
+                                        templates = templates + (newLabel to newText)
+                                        val custom = templates.drop(defaultTemplates.size).joinToString("||") { "${it.first}:${it.second}" }
+                                        prefs.edit().putString("custom", custom).apply()
+                                        newLabel = ""; newText = ""; showAdd = false
+                                    }
+                                },
                             contentAlignment = Alignment.Center
-                        ) { Text("KAYDET", color = PipBlack, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold) }
+                        ) {
+                            Text("KAYDET", color = PipBlack, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
+                        }
                     }
                 }
-                Spacer(Modifier.height(4.dp))
-                Divider(color = PipAmber.copy(0.4f))
+
+                Spacer(Modifier.height(SosSpaceSm))
+                SosSectionLabel("ŞABLON LİSTESİ", PipAmber)
                 Spacer(Modifier.height(4.dp))
             }
 
+            // ── TEMPLATE LIST ────────────────────────────────────────────────
             items(templates) { (label, text) ->
                 val isActive = activeTemplate?.first == label
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .border(1.dp, if (isActive) PipAmber else PipAmber.copy(0.4f), RoundedCornerShape(4.dp))
-                        .background(if (isActive) PipAmber.copy(0.1f) else PipBlack)
-                        .padding(10.dp)
+                        .clip(RoundedCornerShape(SosRadiusSm))
+                        .border(1.dp, if (isActive) PipAmber else PipAmber.copy(alpha = 0.4f), RoundedCornerShape(SosRadiusSm))
+                        .background(if (isActive) PipAmber.copy(alpha = 0.1f) else PipBlack)
+                        .padding(SosSpaceSm)
                 ) {
                     Column {
                         Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
                             Text(label, color = PipAmber, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                            // Morse pattern preview
-                            Text(encodeMorse(label).take(20), color = PipAmber.copy(0.5f), fontFamily = FontFamily.Monospace, fontSize = 10.sp)
+                            Text(encodeMorse(label).take(20), color = PipAmber.copy(alpha = 0.5f), fontFamily = FontFamily.Monospace, fontSize = 10.sp)
                         }
-                        Text(text, color = PipAmber.copy(0.7f), fontFamily = FontFamily.Monospace, fontSize = 12.sp)
-                        Spacer(Modifier.height(8.dp))
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(text, color = PipAmber.copy(alpha = 0.7f), fontFamily = FontFamily.Monospace, fontSize = 12.sp)
+                        Spacer(Modifier.height(SosSpaceSm))
+                        Row(horizontalArrangement = Arrangement.spacedBy(SosSpaceSm)) {
                             SmallPipButton("⚡ FLASH") { flashMorse(label) }
-                            SmallPipButton("KOPYALA") {
-                                /* clipboard handled by system */
-                            }
+
+                            Spacer(Modifier.weight(1f))
+
                             if (templates.indexOf(label to text) >= defaultTemplates.size) {
                                 Box(
-                                    Modifier.Companion.background(PipRed.copy(0.15f), RoundedCornerShape(3.dp)).border(1.dp, PipRed.copy(0.5f), RoundedCornerShape(3.dp)).clickable {
-                                        templates = templates.filter { it != (label to text) }
-                                        val custom = templates.drop(defaultTemplates.size).joinToString("||") { "${it.first}:${it.second}" }
-                                        prefs.edit().putString("custom", custom).apply()
-                                    }.padding(horizontal = 8.dp, vertical = 4.dp)
+                                    Modifier
+                                        .size(32.dp)
+                                        .clip(RoundedCornerShape(SosRadiusSm))
+                                        .background(PipRed.copy(alpha = 0.15f))
+                                        .border(1.dp, PipRed.copy(alpha = 0.5f), RoundedCornerShape(SosRadiusSm))
+                                        .clickable {
+                                            templates = templates.filter { it != (label to text) }
+                                            val custom = templates.drop(defaultTemplates.size).joinToString("||") { "${it.first}:${it.second}" }
+                                            prefs.edit().putString("custom", custom).apply()
+                                        },
+                                    contentAlignment = Alignment.Center
                                 ) {
                                     Icon(Icons.Default.Delete, null, tint = PipRed, modifier = Modifier.size(14.dp))
                                 }
@@ -178,10 +197,17 @@ fun SosTemplatesScreen(onBack: () -> Unit) {
     }
 }
 
+// ─── LOCAL THEMED HELPERS ──────────────────────────────────────────────────
+
 @Composable
 fun SmallPipButton(label: String, onClick: () -> Unit) {
     Box(
-        Modifier.Companion.background(PipAmber.copy(0.15f), RoundedCornerShape(3.dp)).border(1.dp, PipAmber.copy(0.6f), RoundedCornerShape(3.dp)).clickable { onClick() }.padding(horizontal = 8.dp, vertical = 4.dp)
+        Modifier
+            .clip(RoundedCornerShape(SosRadiusSm))
+            .background(PipAmber.copy(alpha = 0.15f))
+            .border(1.dp, PipAmber.copy(alpha = 0.6f), RoundedCornerShape(SosRadiusSm))
+            .clickable { onClick() }
+            .padding(horizontal = 10.dp, vertical = 6.dp)
     ) {
         Text(label, color = PipAmber, fontFamily = FontFamily.Monospace, fontSize = 11.sp, fontWeight = FontWeight.Bold)
     }
@@ -190,9 +216,15 @@ fun SmallPipButton(label: String, onClick: () -> Unit) {
 @Composable
 fun PipTextField(value: String, onValueChange: (String) -> Unit, placeholder: String) {
     Box(
-        Modifier.fillMaxWidth().border(1.dp, PipAmber.copy(0.6f), RoundedCornerShape(4.dp)).padding(10.dp)
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(SosRadiusSm))
+            .border(1.dp, PipAmber.copy(alpha = 0.6f), RoundedCornerShape(SosRadiusSm))
+            .padding(SosSpaceSm)
     ) {
-        if (value.isEmpty()) Text(placeholder, color = PipAmber.copy(0.3f), fontFamily = FontFamily.Monospace, fontSize = 13.sp)
+        if (value.isEmpty()) {
+            Text(placeholder, color = PipAmber.copy(alpha = 0.3f), fontFamily = FontFamily.Monospace, fontSize = 13.sp)
+        }
         BasicTextField(
             value = value,
             onValueChange = onValueChange,

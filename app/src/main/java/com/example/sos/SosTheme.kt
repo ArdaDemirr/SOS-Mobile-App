@@ -47,9 +47,9 @@ import androidx.compose.material3.darkColorScheme
 //val SosBlue         = Color(0xFF2196F3)   // Info / weather
 
 // Text hierarchy
-val SosTextPrimary   = Color(0xFFFFFFFF)
-val SosTextSecondary = Color(0xFFAAAAAA)
-val SosTextDisabled  = Color(0xFF555555)
+val PipTextPrimary   = Color(0xFFFFFFFF)
+val PipTextSecondary = Color(0xFFAAAAAA)
+val PipTextDisabled  = Color(0xFF555555)
 
 // Background levels
 val PipSurface      = Color(0xFF111111)   // Card / container surface
@@ -124,22 +124,22 @@ fun SosTopBar(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(PipSurface)
+            .background(PipBlack) // Header area is pure black
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .statusBarsPadding()
-                .padding(horizontal = SosSpaceMd, vertical = 5.dp),
+                // Top/Bottom padding tuned to match the screenshot height
+                .padding(horizontal = SosSpaceMd, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Back button
+            // ── THE BLOCKY ARROW BOX ──
             Box(
                 modifier = Modifier
-                    .size(44.dp)
-                    .clip(RoundedCornerShape(SosRadiusSm))
-                    .background(accentColor.copy(alpha = 0.15f))
-                    .border(1.dp, accentColor.copy(alpha = 0.4f), RoundedCornerShape(SosRadiusSm))
+                    .size(42.dp) // Adjusted size to look "blocky" but proportional
+                    .clip(RoundedCornerShape(8.dp)) // Rounded corners as per image
+                    .background(accentColor) // Solid Amber Box
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null
@@ -147,15 +147,16 @@ fun SosTopBar(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    Icons.Default.ArrowBack,
+                    imageVector = Icons.Default.ArrowBack,
                     contentDescription = "Geri",
-                    tint = accentColor,
-                    modifier = Modifier.size(22.dp)
+                    tint = PipBlack, // Black arrow inside the Amber box
+                    modifier = Modifier.size(24.dp)
                 )
             }
 
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(modifier = Modifier.width(16.dp))
 
+            // ── TEXT LABELS ──
             Column {
                 Text(
                     text = title,
@@ -168,7 +169,7 @@ fun SosTopBar(
                 if (subtitle.isNotEmpty()) {
                     Text(
                         text = subtitle,
-                        color = accentColor.copy(alpha = 0.55f),
+                        color = accentColor.copy(alpha = 0.6f),
                         fontFamily = FontFamily.Monospace,
                         fontWeight = FontWeight.Normal,
                         fontSize = SosFontCaption,
@@ -177,7 +178,14 @@ fun SosTopBar(
                 }
             }
         }
-        Divider(color = accentColor.copy(alpha = 0.25f), thickness = 1.dp)
+
+        // ── TACTICAL DIVIDER ──
+        // Matches the screenshot: full width, high contrast amber
+        Divider(
+            color = accentColor,
+            thickness = 1.dp,
+            modifier = Modifier.fillMaxWidth()
+        )
     }
 }
 
@@ -388,6 +396,7 @@ fun SosScreenScaffold(
     title: String,
     subtitle: String = "",
     accentColor: Color = PipAmber,
+    horizontalPadding: Dp = SosSpaceMd, // Defaults to 16.dp
     onBack: () -> Unit,
     content: @Composable ColumnScope.() -> Unit
 ) {
@@ -396,6 +405,7 @@ fun SosScreenScaffold(
             .fillMaxSize()
             .background(PipBlack)
             .imePadding()
+            .navigationBarsPadding()
     ) {
         SosTopBar(
             title = title,
@@ -406,7 +416,7 @@ fun SosScreenScaffold(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = SosSpaceMd),
+                .padding(horizontal = horizontalPadding), // Uses the variable now
             content = content
         )
     }

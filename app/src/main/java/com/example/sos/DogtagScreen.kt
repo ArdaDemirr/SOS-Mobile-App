@@ -3,6 +3,7 @@ package com.example.sos
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -116,19 +117,12 @@ fun DogtagScreen(onBack: () -> Unit) {
         }
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(PipBlack)
-            .imePadding()
-            .systemBarsPadding()
+    SosScreenScaffold(
+        title = "KÜNYE / IDENTITY",
+        subtitle = "NODE ID: $uuid",
+        accentColor = PipAmber,
+        onBack = onBack
     ) {
-        ScreenHeader(
-            title = "Künye / Identity",
-            subtitle = "NODE ID: $uuid",
-            onBack = onBack
-        )
-
         // --- PASTE THE BUTTON HERE ---
         Button(
             onClick = { clipboardManager.setText(AnnotatedString(uuid)) },
@@ -138,38 +132,37 @@ fun DogtagScreen(onBack: () -> Unit) {
             Text("COPY NODE ID TO CLIPBOARD", color = PipAmber, fontFamily = FontFamily.Monospace)
         }
         // -----------------------------
-
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp)
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(SosSpaceMd))
 
             // Identity Fields
-            DogtagField("FIRST NAME", name) { name = it }
-            DogtagField("SURNAME", surname) { surname = it }
-            PipDropdown("GENDER", genderOptions, gender) { gender = it }
-            PipDropdown("AGE", ageOptions, age) { age = it }
+            DogtagField("İSİM", name) { name = it }
+            DogtagField("SOYİSİM", surname) { surname = it }
+            PipDropdown("CİNSİYET", genderOptions, gender) { gender = it }
+            PipDropdown("YAŞ", ageOptions, age) { age = it }
 
             // Body Metrics
             Row(Modifier.fillMaxWidth()) {
-                Box(Modifier.weight(1f)) { DogtagField("WEIGHT (kg)", weight, KeyboardOptions(keyboardType = KeyboardType.Number)) { weight = it } }
+                Box(Modifier.weight(1f)) { DogtagField("KİLO (kg)", weight, KeyboardOptions(keyboardType = KeyboardType.Number)) { weight = it } }
                 Spacer(Modifier.width(8.dp))
-                Box(Modifier.weight(1f)) { DogtagField("HEIGHT (cm)", height, KeyboardOptions(keyboardType = KeyboardType.Number)) { height = it } }
+                Box(Modifier.weight(1f)) { DogtagField("BOY (cm)", height, KeyboardOptions(keyboardType = KeyboardType.Number)) { height = it } }
             }
 
             // Medical Info
-            PipDropdown("BLOOD TYPE", bloodOptions, bloodType) { bloodType = it }
-            DogtagField("KNOWN ALLERGIES", allergies) { allergies = it }
-            DogtagField("MEDICINES IN USE", medications) { medications = it }
-            DogtagField("PAST OPERATIONS", pastOperations) { pastOperations = it }
+            PipDropdown("KAN GRUBU", bloodOptions, bloodType) { bloodType = it }
+            DogtagField("BİLİNEN ALERJİLER", allergies) { allergies = it }
+            DogtagField("KULLANILAN İLAÇLAR", medications) { medications = it }
+            DogtagField("GEÇMİŞ OPERASYONLAR", pastOperations) { pastOperations = it }
 
             // --- SOS CONTACT SELECTION (DIRECT FROM DIRECTORY) ---
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "SOS TARGETS (FROM DIRECTORY)",
+                text = "ACİL DURUM KİŞİLERİ",
                 color = PipAmber,
                 fontFamily = FontFamily.Monospace,
                 fontWeight = FontWeight.Bold,
@@ -179,7 +172,7 @@ fun DogtagScreen(onBack: () -> Unit) {
 
             if (availableContacts.isEmpty()) {
                 Text(
-                    text = "NO CONTACTS FOUND. ADD ENTRIES TO DIRECTORY FIRST.",
+                    text = "Henüz kişi eklenmedi, rehberden ekleyiniz.",
                     color = PipRed,
                     fontSize = 11.sp,
                     fontFamily = FontFamily.Monospace
@@ -270,7 +263,7 @@ fun DogtagScreen(onBack: () -> Unit) {
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "LOCK IN DATA & SYNC",
+                    text = "GÖNDER",
                     color = PipAmber,
                     fontFamily = FontFamily.Monospace,
                     fontWeight = FontWeight.Black
