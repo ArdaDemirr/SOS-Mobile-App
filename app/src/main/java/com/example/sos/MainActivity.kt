@@ -25,6 +25,8 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        NetworkStateManager.startObservingLocalNetwork(applicationContext)
+
         // --- PERMISSION CHECK: ALLOW DRAWING OVER OTHER APPS (For SOS Wakeup) ---
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
             val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName"))
