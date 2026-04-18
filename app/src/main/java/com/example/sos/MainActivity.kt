@@ -15,9 +15,36 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
+import com.example.sos.Comm.ChatHubScreen
+import com.example.sos.Comm.ContactsScreen
+import com.example.sos.Comm.MeshService
+import com.example.sos.Comm.RadioScreen
+import com.example.sos.Comm.TacticalChatScreen
 import com.example.sos.database.AppDatabase
+import com.example.sos.CrashDetection.BioScreen
+import com.example.sos.CrashDetection.CrashCountdownScreen
+import com.example.sos.CrashDetection.CrashManager
+import com.example.sos.Emercency.QRCodeSosScreen
+import com.example.sos.Emercency.SosScreen
+import com.example.sos.Emercency.SosTemplatesScreen
+import com.example.sos.Misc.AiScreen
+import com.example.sos.Misc.ForecasterScreen
+import com.example.sos.Misc.SunCalcScreen
+import com.example.sos.Misc.SurvivalCalcScreen
+import com.example.sos.Misc.SurvivalChecklistScreen
+import com.example.sos.Morse.AudioMorseScreen
+import com.example.sos.Morse.CameraMorseScreen
+import com.example.sos.Morse.MorseScreen
+import com.example.sos.Morse.VibrationMorseScreen
+import com.example.sos.Navigation.CompassScreen
+import com.example.sos.Navigation.CoordinateShareScreen
+import com.example.sos.Navigation.DeadReckoningScreen
+import com.example.sos.Navigation.MapScreen
+import com.example.sos.Navigation.StarNavScreen
+import com.example.sos.Navigation.WaypointScreen
 import com.example.sos.notused.BatterySaverScreen
 import com.example.sos.notused.BiometricLockScreen
+import com.example.sos.notused.GuideScreen
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -193,20 +220,34 @@ class MainActivity : ComponentActivity() {
 
                 // ==========================================
 
-                Screen.VibrationMorse -> VibrationMorseScreen(onBack = { currentScreen = Screen.Dashboard })
+                Screen.VibrationMorse -> VibrationMorseScreen(onBack = {
+                    currentScreen = Screen.Dashboard
+                })
                 Screen.AudioMorse -> AudioMorseScreen(onBack = { currentScreen = Screen.Dashboard })
-                Screen.CameraMorse -> CameraMorseScreen(onBack = { currentScreen = Screen.Dashboard })
-                Screen.SosTemplates -> SosTemplatesScreen(onBack = { currentScreen = Screen.Dashboard })
-                Screen.DeadReckoning -> DeadReckoningScreen(onBack = { currentScreen = Screen.Dashboard })
-                Screen.CoordShare -> CoordinateShareScreen(onBack = { currentScreen = Screen.Dashboard })
+                Screen.CameraMorse -> CameraMorseScreen(onBack = {
+                    currentScreen = Screen.Dashboard
+                })
+                Screen.SosTemplates -> SosTemplatesScreen(onBack = {
+                    currentScreen = Screen.Dashboard
+                })
+                Screen.DeadReckoning -> DeadReckoningScreen(onBack = {
+                    currentScreen = Screen.Dashboard
+                })
+                Screen.CoordShare -> CoordinateShareScreen(onBack = {
+                    currentScreen = Screen.Dashboard
+                })
                 Screen.Waypoints -> WaypointScreen(onBack = { currentScreen = Screen.Dashboard })
                 Screen.SunCalc -> SunCalcScreen(onBack = { currentScreen = Screen.Dashboard })
                 Screen.StarNav -> StarNavScreen(onBack = { currentScreen = Screen.Dashboard })
-                Screen.SurvivalCalc -> SurvivalCalcScreen(onBack = { currentScreen = Screen.Dashboard })
+                Screen.SurvivalCalc -> SurvivalCalcScreen(onBack = {
+                    currentScreen = Screen.Dashboard
+                })
                 Screen.QRSos -> QRCodeSosScreen(onBack = { currentScreen = Screen.Dashboard })
                 Screen.BatterySaver -> BatterySaverScreen(onBack = { currentScreen = Screen.Dashboard })
                 Screen.BiometricLock -> BiometricLockScreen(onBack = { currentScreen = Screen.Dashboard })
-                Screen.Checklist -> SurvivalChecklistScreen(onBack = { currentScreen = Screen.Dashboard })
+                Screen.Checklist -> SurvivalChecklistScreen(onBack = {
+                    currentScreen = Screen.Dashboard
+                })
                 Screen.Dogtag -> DogtagScreen(onBack = { currentScreen = Screen.Dashboard })
 
                 else -> {

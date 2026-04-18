@@ -27,7 +27,7 @@ import com.example.sos.PipAmber
 import com.example.sos.PipBlack
 import com.example.sos.PipGreen
 import com.example.sos.PipRed
-import com.example.sos.ScreenHeader
+import com.example.sos.Morse.ScreenHeader
 
 @Composable
 fun BiometricLockScreen(onBack: () -> Unit) {

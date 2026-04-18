@@ -1,5 +1,7 @@
 package com.example.sos
 
+import com.example.sos.Navigation.WaypointRequestPayload
+import com.example.sos.Navigation.WaypointResponsePayload
 import com.example.sos.database.DogtagEntity
 import com.example.sos.database.MessageEntity
 import retrofit2.Response

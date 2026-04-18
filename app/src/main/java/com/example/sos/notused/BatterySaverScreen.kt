@@ -30,7 +30,7 @@ import com.example.sos.PipBlack
 import com.example.sos.PipGreen
 import com.example.sos.PipRed
 import com.example.sos.Screen
-import com.example.sos.ScreenHeader
+import com.example.sos.Morse.ScreenHeader
 
 @Composable
 fun BatterySaverScreen(onBack: () -> Unit) {

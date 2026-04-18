@@ -25,9 +25,9 @@ import androidx.compose.ui.unit.sp
 import com.example.sos.PipAmber
 import com.example.sos.PipBlack
 import com.example.sos.PipRed
-import com.example.sos.PipTextField
-import com.example.sos.ScreenHeader
-import com.example.sos.SmallPipButton
+import com.example.sos.Emercency.PipTextField
+import com.example.sos.Morse.ScreenHeader
+import com.example.sos.Emercency.SmallPipButton
 import java.util.Locale
 import kotlin.math.roundToInt
 

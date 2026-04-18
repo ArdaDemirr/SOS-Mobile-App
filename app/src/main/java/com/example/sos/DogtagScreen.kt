@@ -54,6 +54,7 @@ import kotlinx.coroutines.withContext
 import java.util.UUID
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
+import com.example.sos.Morse.ScreenHeader
 
 @Composable
 fun DogtagScreen(onBack: () -> Unit) {

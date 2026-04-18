@@ -42,7 +42,7 @@ import com.example.sos.PipAmber
 import com.example.sos.PipBlack
 import com.example.sos.PipGreen
 import com.example.sos.PipRed
-import com.example.sos.VoiceActivationService
+import com.example.sos.notused.VoiceActivationService
 
 @Composable
 fun VoiceActivationScreen(onBack: () -> Unit) {

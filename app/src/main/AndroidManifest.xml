@@ -69,17 +69,17 @@
         </activity>
 
         <service
-            android:name=".CrashService"
+            android:name=".CrashDetection.CrashService"
             android:foregroundServiceType="location"
             android:exported="false" />
 
         <service
-            android:name=".VoiceActivationService"
+            android:name=".notused.VoiceActivationService"
             android:foregroundServiceType="microphone"
             android:exported="false" />
 
         <service
-            android:name=".MeshService"
+            android:name=".Comm.MeshService"
             android:foregroundServiceType="connectedDevice"
             android:exported="false" />
 
