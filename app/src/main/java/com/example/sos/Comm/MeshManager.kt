@@ -150,8 +150,14 @@ class MeshManager private constructor(private val context: Context) {
                 // If it's someone else's message, use the relay endpoint
                 RetrofitInstance.api.relayPacket(msg, myNodeId)
             }
-            if (response.isSuccessful) messageDao.markAsSynced(msg.messageId)
-        } catch (e: Exception) { /* No Connection */ }
+            if (response.isSuccessful) {
+                messageDao.markAsSynced(msg.messageId)
+                Log.d("TacticalMesh", "Sync Success: ${msg.messageId}")
+            }
+        } catch (e: Exception) {
+            // Log the actual error to see if it's a network issue or a parsing crash
+            Log.e("TacticalMesh", "Network/Parsing Error for ${msg.messageId}", e)
+        }
     }
 
     private fun relayToOtherNodes(msg: MessageEntity, excludeEndpoint: String) {

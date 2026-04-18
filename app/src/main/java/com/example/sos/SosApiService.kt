@@ -47,10 +47,10 @@ interface SosApiService {
 
     // --- NEW MESSAGING ROUTES ---
     @POST("api/messages")
-    suspend fun uploadMessage(@Body msg: MessageEntity): Response<MessageEntity>
+    suspend fun uploadMessage(@Body msg: MessageEntity): Response<Unit>
 
     @POST("api/messages/relay")
-    suspend fun relayPacket(@Body msg: MessageEntity, @Header("X-Relay-Id") relayNodeId: String): Response<MessageEntity>
+    suspend fun relayPacket(@Body msg: MessageEntity, @Header("X-Relay-Id") relayNodeId: String): Response<Unit>
 
     // 3. Inbox Sync (Fetch all messages targeted for YOU)
     //@GET("api/messages/target/{targetId}")
