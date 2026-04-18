@@ -18,7 +18,7 @@ enum class LocalLinkStatus {
 object NetworkStateManager {
 
     // --- 1. SECURE UPLINK STATE ---
-    private val _isServerOnline = MutableStateFlow(false)
+    private val _isServerOnline = MutableStateFlow(true)
     val isServerOnline: StateFlow<Boolean> = _isServerOnline.asStateFlow()
 
     fun updateServerState(isOnline: Boolean) {

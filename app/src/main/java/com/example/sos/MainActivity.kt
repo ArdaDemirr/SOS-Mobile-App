@@ -44,6 +44,7 @@ import com.example.sos.Navigation.StarNavScreen
 import com.example.sos.Navigation.WaypointScreen
 import com.example.sos.notused.BatterySaverScreen
 import com.example.sos.notused.BiometricLockScreen
+import com.example.sos.notused.DetailScreen
 import com.example.sos.notused.GuideScreen
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext

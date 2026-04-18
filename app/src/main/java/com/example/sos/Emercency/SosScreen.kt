@@ -41,19 +41,19 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.example.sos.Morse.ScreenHeader
-import com.example.sos.SosAmber
-import com.example.sos.SosBg
-import com.example.sos.SosBorder
-import com.example.sos.SosCyan
+import com.example.sos.PipAmber
+import com.example.sos.PipYellow
+import com.example.sos.PipBlack
+import com.example.sos.PipBorder
 import com.example.sos.SosInfoCard
 import com.example.sos.SosRadiusMd
 import com.example.sos.SosRadiusSm
-import com.example.sos.SosRed
+import com.example.sos.PipRed
 import com.example.sos.SosSectionLabel
 import com.example.sos.SosSpaceMd
 import com.example.sos.SosSpaceSm
 import com.example.sos.SosStatusBadge
-import com.example.sos.SosSurface
+import com.example.sos.PipSurface
 import com.example.sos.SosTextDisabled
 import com.example.sos.SosTextPrimary
 import com.example.sos.SosTextSecondary
@@ -162,7 +162,7 @@ fun SosScreen(onBack: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(SosBg)
+            .background(PipBlack)
             .imePadding()
             .systemBarsPadding()
     ) {
@@ -195,17 +195,17 @@ fun SosScreen(onBack: () -> Unit) {
                 onClick = { isAudioSosActive = !isAudioSosActive }
             )
 
-            SosSectionLabel("KONUM BİLGİSİ", SosAmber)
+            SosSectionLabel("KONUM BİLGİSİ", PipYellow)
 
             // ── GPS SECTION ──────────────────────────────────────────────────
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(SosRadiusMd))
-                    .background(SosSurface)
+                    .background(PipSurface)
                     .border(
                         1.dp,
-                        if (isGpsLocked) SosCyan.copy(0.5f) else SosBorder,
+                        if (isGpsLocked) PipAmber.copy(0.5f) else PipBorder,
                         RoundedCornerShape(SosRadiusMd)
                     )
             ) {
@@ -214,7 +214,7 @@ fun SosScreen(onBack: () -> Unit) {
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(
-                            if (isGpsLocked) SosCyan.copy(0.1f) else SosSurface
+                            if (isGpsLocked) PipAmber.copy(0.1f) else PipSurface
                         )
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
@@ -237,37 +237,37 @@ fun SosScreen(onBack: () -> Unit) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(
                             modifier = Modifier.size(36.dp).clip(RoundedCornerShape(SosRadiusSm))
-                                .background(SosCyan.copy(0.12f))
-                                .border(1.dp, SosCyan.copy(0.3f), RoundedCornerShape(SosRadiusSm)),
+                                .background(PipAmber.copy(0.12f))
+                                .border(1.dp, PipAmber.copy(0.3f), RoundedCornerShape(SosRadiusSm)),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(Icons.Default.LocationOn, null, tint = SosCyan, modifier = Modifier.size(20.dp))
+                            Icon(Icons.Default.LocationOn, null, tint = PipAmber, modifier = Modifier.size(20.dp))
                         }
                         Spacer(modifier = Modifier.width(10.dp))
                         Column {
-                            Text("GPS KONUMU", color = SosCyan, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.ExtraBold, fontSize = 13.sp)
+                            Text("GPS KONUMU", color = PipAmber, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.ExtraBold, fontSize = 13.sp)
                             Text(
                                 if (isGpsLocked) "KAYNAK: $gpsSource" else if (isGpsActive) "SİNYAL ARANYOR..." else "Aktifleştirmek için dokun",
-                                color = SosCyan.copy(0.55f), fontFamily = FontFamily.Monospace, fontSize = 9.sp
+                                color = PipAmber.copy(0.55f), fontFamily = FontFamily.Monospace, fontSize = 9.sp
                             )
                         }
                     }
                     SosStatusBadge(
                         if (isGpsActive) "AKTİF" else "KAPALI",
-                        if (isGpsActive) SosCyan else SosTextDisabled
+                        if (isGpsActive) PipAmber else SosTextDisabled
                     )
                 }
 
                 // GPS Data Grid (only when active)
                 if (isGpsActive) {
-                    Divider(color = SosCyan.copy(0.15f), thickness = 1.dp)
+                    Divider(color = PipAmber.copy(0.15f), thickness = 1.dp)
                     Row(
                         modifier = Modifier.fillMaxWidth().padding(12.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        SosInfoCard("ENLEM", gpsLat, SosCyan, Modifier.weight(1f))
-                        SosInfoCard("BOYLAM", gpsLon, SosCyan, Modifier.weight(1f))
-                        SosInfoCard("YÜKSEKLİK", gpsAlt, SosCyan, Modifier.weight(1f))
+                        SosInfoCard("ENLEM", gpsLat, PipAmber, Modifier.weight(1f))
+                        SosInfoCard("BOYLAM", gpsLon, PipAmber, Modifier.weight(1f))
+                        SosInfoCard("YÜKSEKLİK", gpsAlt, PipAmber, Modifier.weight(1f))
                     }
                 }
             }
@@ -290,10 +290,10 @@ private fun SosSignalButton(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(SosRadiusMd))
-            .background(if (isActive) SosRed.copy(0.15f) else SosSurface)
+            .background(if (isActive) PipRed.copy(0.15f) else PipSurface)
             .border(
                 width = if (isActive) 2.dp else 1.dp,
-                color = if (isActive) SosRed else SosBorder,
+                color = if (isActive) PipRed else PipBorder,
                 shape = RoundedCornerShape(SosRadiusMd)
             )
             .clickable(
@@ -305,20 +305,20 @@ private fun SosSignalButton(
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(
                 modifier = Modifier.size(52.dp).clip(CircleShape)
-                    .background(if (isActive) SosRed.copy(0.2f) else SosBorder.copy(0.5f))
-                    .border(2.dp, if (isActive) SosRed else SosBorder, CircleShape),
+                    .background(if (isActive) PipRed.copy(0.2f) else PipBorder.copy(0.5f))
+                    .border(2.dp, if (isActive) PipRed else PipBorder, CircleShape),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(icon, null, tint = if (isActive) SosRed else SosTextSecondary, modifier = Modifier.size(28.dp))
+                Icon(icon, null, tint = if (isActive) PipRed else SosTextSecondary, modifier = Modifier.size(28.dp))
             }
             Spacer(modifier = Modifier.Companion.width(SosSpaceMd))
             Column(modifier = Modifier.weight(1f)) {
-                Text(title, color = if (isActive) SosRed else SosTextPrimary, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.ExtraBold, fontSize = 15.sp)
-                Text(subtitle, color = if (isActive) SosRed.copy(0.7f) else SosTextSecondary, fontFamily = FontFamily.Monospace, fontSize = 10.sp)
+                Text(title, color = if (isActive) PipRed else SosTextPrimary, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.ExtraBold, fontSize = 15.sp)
+                Text(subtitle, color = if (isActive) PipRed.copy(0.7f) else SosTextSecondary, fontFamily = FontFamily.Monospace, fontSize = 10.sp)
             }
             SosStatusBadge(
                 if (isActive) "AKTİF" else "KAPALI",
-                if (isActive) SosRed else SosTextDisabled
+                if (isActive) PipRed else SosTextDisabled
             )
         }
     }

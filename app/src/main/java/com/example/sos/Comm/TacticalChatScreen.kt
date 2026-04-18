@@ -24,17 +24,17 @@ import com.example.sos.database.MessageEntity
 import java.util.UUID
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.LaunchedEffect
-import com.example.sos.SosAmber
-import com.example.sos.SosBorder
-import com.example.sos.SosGreen
+import com.example.sos.PipYellow
+import com.example.sos.PipBorder
+import com.example.sos.PipGreen
 import com.example.sos.SosIconButton
 import com.example.sos.SosRadiusMd
 import com.example.sos.SosRadiusSm
 import com.example.sos.SosScreenScaffold
 import com.example.sos.SosSpaceMd
 import com.example.sos.SosStatusBadge
-import com.example.sos.SosSurface
-import com.example.sos.SosSurface2
+import com.example.sos.PipSurface
+import com.example.sos.PipSurface2
 import com.example.sos.SosTextPrimary
 
 @Composable
@@ -79,8 +79,8 @@ fun TacticalChatScreen(myUuid: String, targetUuid: String, targetName: String, o
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(bottom = SosSpaceMd)
-                .background(SosSurface, RoundedCornerShape(SosRadiusMd))
-                .border(1.dp, SosBorder, RoundedCornerShape(SosRadiusMd))
+                .background(PipSurface, RoundedCornerShape(SosRadiusMd))
+                .border(1.dp, PipBorder, RoundedCornerShape(SosRadiusMd))
                 .padding(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -89,16 +89,16 @@ fun TacticalChatScreen(myUuid: String, targetUuid: String, targetName: String, o
                 onValueChange = { inputText = it },
                 modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
                 textStyle = TextStyle(
-                    color = SosAmber,
+                    color = PipYellow,
                     fontFamily = FontFamily.Monospace,
                     fontSize = 16.sp
                 ),
-                cursorBrush = SolidColor(SosAmber),
+                cursorBrush = SolidColor(PipYellow),
                 decorationBox = { inner ->
                     if (inputText.isEmpty()) {
                         Text(
                             "ENTER PACKET DATA...",
-                            color = SosAmber.copy(0.3f),
+                            color = PipYellow.copy(0.3f),
                             fontFamily = FontFamily.Monospace,
                             fontSize = 14.sp
                         )
@@ -134,10 +134,10 @@ fun ChatBubble(msg: MessageEntity, isMe: Boolean) {
             modifier = Modifier
                 .widthIn(max = 280.dp)
                 .background(
-                    if (isMe) SosAmber.copy(0.12f) else SosSurface2,
+                    if (isMe) PipYellow.copy(0.12f) else PipSurface2,
                     RoundedCornerShape(SosRadiusSm)
                 )
-                .border(1.dp, if (isMe) SosAmber.copy(0.4f) else SosBorder, RoundedCornerShape(
+                .border(1.dp, if (isMe) PipYellow.copy(0.4f) else PipBorder, RoundedCornerShape(
                     SosRadiusSm
                 ))
                 .padding(12.dp)
@@ -148,7 +148,7 @@ fun ChatBubble(msg: MessageEntity, isMe: Boolean) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     SosStatusBadge(
                         text = if (msg.isSynced) "RELAYED" else "MESH PENDING",
-                        accentColor = if (msg.isSynced) SosGreen else SosAmber
+                        accentColor = if (msg.isSynced) PipGreen else PipYellow
                     )
                 }
             }

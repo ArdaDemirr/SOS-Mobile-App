@@ -1,4 +1,4 @@
-package com.example.sos
+package com.example.sos.notused
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -13,6 +13,8 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.sos.PipBlack
+import com.example.sos.PipGreen
 
 @Composable
 fun DetailScreen(screenName: String, onBack: () -> Unit) {

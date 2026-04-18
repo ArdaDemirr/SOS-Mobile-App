@@ -30,37 +30,37 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.darkColorScheme
 
 // ═══════════════════════════════════════════════════════════════════════════
 //  COLOR TOKENS
 // ═══════════════════════════════════════════════════════════════════════════
 
-// Background levels
-val SosBg           = Color(0xFF000000)   // Pure dark canvas
-val SosSurface      = Color(0xFF111111)   // Card / container surface
-val SosSurface2     = Color(0xFF1A1A1A)   // Elevated surface
-val SosBorder       = Color(0xFF252525)   // Subtle border
-
 // Semantic accents
-val SosRed          = Color(0xFFFF3B3B)   // Critical / emergency
-val SosAmber        = Color(0xFFFFBF00)   // Warning / primary accent
-val SosGreen        = Color(0xFF32D74B)   // Success / active
-val SosCyan         = Color(0xFF0AE7FF)   // Navigation / location
-val SosPurple       = Color(0xFFBF5AF2)   // Tools / security
-val SosBlue         = Color(0xFF2196F3)   // Info / weather
+//val SosRed          = Color(0xFFFF3B3B)   // Critical / emergency
+//val SosGreen        = Color(0xFF32D74B)   // Success / active
+//val SosCyan         = Color(0xFF0AE7FF)   // Navigation / location
+//val SosPurple       = Color(0xFFBF5AF2)   // Tools / security
+//val SosBlue         = Color(0xFF2196F3)   // Info / weather
 
 // Text hierarchy
 val SosTextPrimary   = Color(0xFFFFFFFF)
 val SosTextSecondary = Color(0xFFAAAAAA)
 val SosTextDisabled  = Color(0xFF555555)
 
-// Legacy aliases kept so old code still compiles
+// Background levels
+val PipSurface      = Color(0xFF111111)   // Card / container surface
+val PipSurface2     = Color(0xFF1A1A1A)   // Elevated surface
+val PipBorder       = Color(0xFF252525)   // Subtle border
+
+
 val PipBlack = Color(0xFF000000)
 val PipAmber = Color(0xFFB64200)
 val PipRed = Color(0xFFFF0000)
+val PipYellow = Color(0xFFFFBF00)   // Warning / primary accent
 val PipGreen = Color(0xFF00FF00)
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -84,12 +84,31 @@ val SosFontCaption  = 11.sp
 // ═══════════════════════════════════════════════════════════════════════════
 //  GRADIENTS
 // ═══════════════════════════════════════════════════════════════════════════
-val SosRedGradient = Brush.verticalGradient(listOf(SosRed.copy(0.18f), Color.Transparent))
-val SosAmberGradient = Brush.verticalGradient(listOf(SosAmber.copy(0.12f), Color.Transparent))
+val SosRedGradient = Brush.verticalGradient(listOf(PipRed.copy(0.18f), Color.Transparent))
+val SosAmberGradient = Brush.verticalGradient(listOf(PipYellow.copy(0.12f), Color.Transparent))
 
 // ═══════════════════════════════════════════════════════════════════════════
 //  REUSABLE COMPOSABLES
 // ═══════════════════════════════════════════════════════════════════════════
+
+private val TacticalColorScheme = darkColorScheme(
+    primary = PipAmber,       // Forces default buttons to use your Copper
+    background = PipBlack,       // Forces default backgrounds to OLED Black
+    surface = PipSurface,     // Forces default cards to your dark gray
+    error = PipRed,           // Forces errors to your tactical red
+    onPrimary = PipBlack,
+    onBackground = PipAmber,
+    onSurface = PipAmber,
+    onError = PipBlack
+)
+
+@Composable
+fun SosTheme(content: @Composable () -> Unit) {
+    MaterialTheme(
+        colorScheme = TacticalColorScheme,
+        content = content
+    )
+}
 
 /**
  * Standard top app bar used by every detail screen.
@@ -99,19 +118,19 @@ val SosAmberGradient = Brush.verticalGradient(listOf(SosAmber.copy(0.12f), Color
 fun SosTopBar(
     title: String,
     subtitle: String = "",
-    accentColor: Color = SosAmber,
+    accentColor: Color = PipAmber,
     onBack: () -> Unit
 ) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(SosSurface)
+            .background(PipSurface)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .statusBarsPadding()
-                .padding(horizontal = SosSpaceMd, vertical = 10.dp),
+                .padding(horizontal = SosSpaceMd, vertical = 5.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Back button
@@ -168,7 +187,7 @@ fun SosTopBar(
 @Composable
 fun SosPrimaryButton(
     text: String,
-    accentColor: Color = SosAmber,
+    accentColor: Color = PipYellow,
     isActive: Boolean = false,
     modifier: Modifier = Modifier,
     onClick: () -> Unit
@@ -220,11 +239,11 @@ fun SosDangerButton(
             .height(64.dp)
             .clip(RoundedCornerShape(SosRadiusMd))
             .background(
-                if (isActive) SosRed.copy(alpha = 0.22f) else SosRed.copy(alpha = 0.08f)
+                if (isActive) PipRed.copy(alpha = 0.22f) else PipRed.copy(alpha = 0.08f)
             )
             .border(
                 width = if (isActive) 2.dp else 1.dp,
-                color = if (isActive) SosRed else SosRed.copy(alpha = 0.5f),
+                color = if (isActive) PipRed else PipRed.copy(alpha = 0.5f),
                 shape = RoundedCornerShape(SosRadiusMd)
             )
             .clickable(
@@ -235,7 +254,7 @@ fun SosDangerButton(
     ) {
         Text(
             text = text,
-            color = SosRed,
+            color = PipRed,
             fontFamily = FontFamily.Monospace,
             fontWeight = FontWeight.ExtraBold,
             fontSize = 16.sp,
@@ -251,14 +270,14 @@ fun SosDangerButton(
 fun SosInfoCard(
     label: String,
     value: String,
-    accentColor: Color = SosAmber,
+    accentColor: Color = PipYellow,
     modifier: Modifier = Modifier
 ) {
     Column(
         modifier = modifier
             .clip(RoundedCornerShape(SosRadiusSm))
-            .background(SosSurface2)
-            .border(1.dp, SosBorder, RoundedCornerShape(SosRadiusSm))
+            .background(PipSurface2)
+            .border(1.dp, PipBorder, RoundedCornerShape(SosRadiusSm))
             .padding(SosSpaceMd)
     ) {
         Text(
@@ -307,7 +326,7 @@ fun SosStatusBadge(text: String, accentColor: Color) {
  * Section label with divider.
  */
 @Composable
-fun SosSectionLabel(text: String, color: Color = SosAmber) {
+fun SosSectionLabel(text: String, color: Color = PipAmber) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
@@ -336,7 +355,7 @@ fun SosSectionLabel(text: String, color: Color = SosAmber) {
 fun SosIconButton(
     icon: ImageVector,
     contentDescription: String,
-    accentColor: Color = SosAmber,
+    accentColor: Color = PipYellow,
     size: Dp = 44.dp,
     onClick: () -> Unit
 ) {
@@ -368,14 +387,14 @@ fun SosIconButton(
 fun SosScreenScaffold(
     title: String,
     subtitle: String = "",
-    accentColor: Color = SosAmber,
+    accentColor: Color = PipAmber,
     onBack: () -> Unit,
     content: @Composable ColumnScope.() -> Unit
 ) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(SosBg)
+            .background(PipBlack)
             .imePadding()
     ) {
         SosTopBar(

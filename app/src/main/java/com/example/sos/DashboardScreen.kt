@@ -57,15 +57,17 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 // ─── PALETTE ────────────────────────────────────────────────────────────────
-private val ColorRed     = Color(0xFFFF3B3B)
+/*
+private val PipRed     = Color(0xFFFF3B3B)
 private val ColorAmber   = Color(0xFFFFBF00)
 private val ColorCyan    = Color(0xFF00E5FF)
-private val ColorGreen   = Color(0xFF39FF14)
+private val PipGreen   = Color(0xFF39FF14)
 private val ColorPurple  = Color(0xFFBB86FC)
 private val ColorBlue    = Color(0xFF4FC3F7)
 private val ColorBg      = Color(0xFF000000)
 private val ColorSurface = Color(0xFF000000)
 val ColorBorder  = Color(0xFF2A2A2A)
+*/
 
 // ─── DATA MODELS ────────────────────────────────────────────────────────────
 data class MenuOption(
@@ -178,7 +180,7 @@ fun DashboardScreen(onNavigate: (Screen) -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(ColorBg)
+            .background(PipBlack)
     ) {
         StatusMonitor()
 
@@ -203,15 +205,15 @@ fun CategorySection(category: FeatureCategory, onNavigate: (Screen) -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(8.dp))
-            .border(1.dp, category.accentColor.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
-            .background(ColorSurface)
+            .border(1.dp, category.accentColor.copy(alpha = 1.0f), RoundedCornerShape(8.dp))
+            .background(PipSurface)
             .animateContentSize()
     ) {
         // ── HEADER ──────────────────────────────────────────────────────────
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(category.accentColor.copy(alpha = 0.12f))
+                .background(PipBlack.copy(alpha = 1.0f))
                 .padding(horizontal = 14.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
@@ -221,14 +223,14 @@ fun CategorySection(category: FeatureCategory, onNavigate: (Screen) -> Unit) {
                     modifier = Modifier
                         .size(36.dp)
                         .clip(RoundedCornerShape(6.dp))
-                        .background(category.accentColor.copy(alpha = 0.18f))
+                        .background(PipBlack.copy(alpha = 0.05f))
                         .border(1.dp, category.accentColor, RoundedCornerShape(6.dp)),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = category.icon,
                         contentDescription = null,
-                        tint = category.accentColor,
+                        tint = PipAmber,
                         modifier = Modifier.size(20.dp)
                     )
                 }
@@ -310,10 +312,10 @@ fun FeatureButton(
         modifier = modifier
             .height(80.dp)
             .clip(RoundedCornerShape(6.dp))
-            .background(ColorBg)
+            .background(PipBlack)
             .border(
                 width = if (item.isActive) 1.5.dp else 0.8.dp,
-                color = if (item.isActive) accentColor else ColorBorder,
+                color = if (item.isActive) accentColor else PipBorder,
                 shape = RoundedCornerShape(6.dp)
             )
             .clickable { onClick() }
@@ -449,47 +451,24 @@ fun StatusMonitor() {
         }
     }
 
-    val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-    val tm = context.getSystemService(Context.TELEPHONY_SERVICE) as android.telephony.TelephonyManager
-    val activeNetwork = cm.activeNetwork
-    val caps = cm.getNetworkCapabilities(activeNetwork)
-    val carrierName = tm.networkOperatorName
-
-    val connectionType: String
-    val isConnected: Boolean
-    when {
-        caps != null && caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> {
-            connectionType = "WI-FI"; isConnected = true
-        }
-        caps != null && caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> {
-            connectionType = "GSM NET"; isConnected = true
-        }
-        !carrierName.isNullOrBlank() -> {
-            connectionType = "SADECE GSM"; isConnected = true
-        }
-        else -> {
-            connectionType = "BAĞLANTI YOK"; isConnected = false
-        }
-    }
-
     val batColor = when {
-        batteryLevel < 20 -> ColorRed
+        batteryLevel < 20 -> PipRed
         batteryLevel < 70 -> PipAmber
-        else -> ColorGreen
+        else -> PipGreen
     }
 
     // --- 2. MAP NETWORK STATES TO TACTICAL UI COLORS/TEXT ---
     val (connText, connColor) = when (localLinkState) {
-        LocalLinkStatus.WIFI -> "WI-FI" to ColorGreen
-        LocalLinkStatus.CELL_DATA -> "GSM NET" to ColorCyan
-        LocalLinkStatus.CELL_PLAIN -> "SADECE GSM" to ColorAmber // Orange/Amber warning
-        LocalLinkStatus.DISCONNECTED -> "BAĞLANTI YOK" to ColorRed
+        LocalLinkStatus.WIFI -> "WIFI" to PipGreen
+        LocalLinkStatus.CELL_DATA -> "GSM NET" to PipGreen
+        LocalLinkStatus.CELL_PLAIN -> "SADECE GSM" to PipAmber
+        LocalLinkStatus.DISCONNECTED -> "BAĞLANTI YOK" to PipRed
     }
 
     val (serverText, serverColor) = if (isServerOnline) {
-        "SERVER: ONLINE" to ColorGreen
+        "Express: Aktif" to PipGreen
     } else {
-        "SERVER: KOPUK" to ColorAmber
+        "Express: Pasif" to PipRed
     }
 
     Row(
@@ -498,8 +477,8 @@ fun StatusMonitor() {
             .padding(horizontal = 12.dp)
             .padding(top = 40.dp, bottom = 4.dp)
             .clip(RoundedCornerShape(6.dp))
-            .background(ColorSurface)
-            .border(1.dp, ColorBorder, RoundedCornerShape(6.dp))
+            .background(PipSurface)
+            .border(1.dp, PipBorder, RoundedCornerShape(6.dp))
             .padding(horizontal = 14.dp, vertical = 10.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
@@ -537,7 +516,7 @@ fun StatusMonitor() {
             modifier = Modifier
                 .width(1.dp)
                 .height(36.dp)
-                .background(ColorBorder)
+                .background(PipBorder)
         )
 
         // RIGHT: Dual Telemetry (Local + Server)
