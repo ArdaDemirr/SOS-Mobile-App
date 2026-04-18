@@ -26,6 +26,8 @@ import com.example.sos.MeshManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.util.UUID
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.runtime.LaunchedEffect
 
 @Composable
 fun TacticalChatScreen(myUuid: String, targetUuid: String, targetName: String, onBack: () -> Unit) {
@@ -37,12 +39,24 @@ fun TacticalChatScreen(myUuid: String, targetUuid: String, targetName: String, o
     var inputText by remember { mutableStateOf("") }
     val messages by dao.getChatThread(myUuid, targetUuid).collectAsState(initial = emptyList())
 
+    val listState = rememberLazyListState()
+    val messageCount = messages.size
+
+    // 2. The Auto-Scroll Trigger
+    LaunchedEffect(messageCount) {
+        if (messageCount > 0) {
+            // Animate smoothly to the last item in the index
+            listState.animateScrollToItem(messageCount - 1)
+        }
+    }
+
     SosScreenScaffold(
         title = "CHANNEL: $targetName",
         subtitle = "SECURE LINK ACTIVE",
         onBack = onBack
     ) {
         LazyColumn(
+            state = listState,
             modifier = Modifier.weight(1f).padding(vertical = SosSpaceMd),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {

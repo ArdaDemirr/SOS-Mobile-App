@@ -26,4 +26,8 @@ interface MessageDao {
     // Gets the timestamp of the newest message you currently have
     @Query("SELECT MAX(timestamp) FROM messages")
     suspend fun getLatestMessageTimestamp(): Long?
+
+    // TACTICAL FILTER: Ignores the mule mailbag, fetches only personal comms
+    @Query("SELECT * FROM messages WHERE senderId = :myId OR targetId = :myId ORDER BY timestamp DESC")
+    fun getMyMessagesFlow(myId: String): Flow<List<MessageEntity>>
 }

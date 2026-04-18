@@ -33,9 +33,11 @@ import java.util.*
 fun ChatHubScreen(myUuid: String, onConversationClick: (String, String) -> Unit, onBack: () -> Unit) {
     val context = LocalContext.current
     val db = remember { AppDatabase.getDatabase(context) }
+    val myUuid = RetrofitInstance.currentUserUuid ?: "UNKNOWN"
 
     var contacts by remember { mutableStateOf(listOf<ContactEntity>()) }
-    val allMessages by db.messageDao().getAllMessagesFlow().collectAsState(initial = emptyList())
+    //val allMessages by db.messageDao().getAllMessagesFlow().collectAsState(initial = emptyList())
+    val allMessages by db.messageDao().getMyMessagesFlow(myUuid).collectAsState(initial = emptyList())
     var showNewChatDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
