@@ -30,4 +30,12 @@ interface MessageDao {
     // TACTICAL FILTER: Ignores the mule mailbag, fetches only personal comms
     @Query("SELECT * FROM messages WHERE senderId = :myId OR targetId = :myId ORDER BY timestamp DESC")
     fun getMyMessagesFlow(myId: String): Flow<List<MessageEntity>>
+
+    // Hard deletes the entire thread between you and a specific partner
+    @Query("""
+        DELETE FROM messages 
+        WHERE (senderId = :myId AND targetId = :partnerId) 
+           OR (senderId = :partnerId AND targetId = :myId)
+    """)
+    suspend fun deleteConversation(myId: String, partnerId: String)
 }

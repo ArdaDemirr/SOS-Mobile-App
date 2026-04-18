@@ -1,5 +1,6 @@
 package com.example.sos
 
+import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -10,6 +11,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -24,6 +26,7 @@ import com.example.sos.database.AppDatabase
 import com.example.sos.database.ContactEntity
 import com.example.sos.database.MessageEntity
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.*
@@ -34,6 +37,7 @@ fun ChatHubScreen(myUuid: String, onConversationClick: (String, String) -> Unit,
     val context = LocalContext.current
     val db = remember { AppDatabase.getDatabase(context) }
     val myUuid = RetrofitInstance.currentUserUuid ?: "UNKNOWN"
+    val scope = rememberCoroutineScope()
 
     var contacts by remember { mutableStateOf(listOf<ContactEntity>()) }
     //val allMessages by db.messageDao().getAllMessagesFlow().collectAsState(initial = emptyList())
@@ -45,20 +49,32 @@ fun ChatHubScreen(myUuid: String, onConversationClick: (String, String) -> Unit,
         contacts = withContext(Dispatchers.IO) { db.contactDao().getAllContacts() }
 
         // --- FETCH SERVER INBOX ON LAUNCH ---
-        // --- FETCH SERVER INBOX ON LAUNCH ---
         if (myUuid != "UNKNOWN_USER") {
             withContext(Dispatchers.IO) {
                 try {
-                    // 1. Get the High-Water Mark from the local database
-                    val latestTime = db.messageDao().getLatestMessageTimestamp() ?: 0L
+                    // 1. Get the High-Water Mark from SharedPreferences (NOT the DB)
+                    val prefs = context.getSharedPreferences("tactical_prefs", Context.MODE_PRIVATE)
+                    val prefsKey = "LAST_SYNC_TIME_$myUuid"
+                    val latestTime = prefs.getLong(prefsKey, 0L)
 
                     // 2. Pass it to the server!
                     val response = RetrofitInstance.api.fetchInbox(myUuid, latestTime)
 
                     if (response.isSuccessful) {
+                        var highestTimestampInBatch = latestTime
+
                         response.body()?.forEach { msg ->
                             msg.isSynced = true // Mark synced since it came from server
                             db.messageDao().insertMessage(msg)
+
+                            if (msg.timestamp > highestTimestampInBatch) {
+                                highestTimestampInBatch = msg.timestamp
+                            }
+                        }
+
+                        // 3. Save the new anchor safely in SharedPreferences
+                        if (highestTimestampInBatch > latestTime) {
+                            prefs.edit().putLong(prefsKey, highestTimestampInBatch).apply()
                         }
                     }
                 } catch (e: Exception) {
@@ -114,7 +130,20 @@ fun ChatHubScreen(myUuid: String, onConversationClick: (String, String) -> Unit,
                             Text(partnerName, color = PipAmber, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                             Text(lastMsg.content, color = PipAmber.copy(0.7f), fontSize = 14.sp, maxLines = 1)
                         }
-                        Text(timeString, color = PipAmber.copy(0.5f), fontSize = 10.sp)
+
+                        Column(horizontalAlignment = Alignment.End) {
+                            Text(timeString, color = PipAmber.copy(0.5f), fontSize = 10.sp)
+                            IconButton(
+                                onClick = {
+                                    scope.launch(Dispatchers.IO) {
+                                        db.messageDao().deleteConversation(myUuid, partnerId)
+                                    }
+                                },
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Icon(Icons.Default.Delete, contentDescription = "Wipe", tint = PipAmber)
+                            }
+                        }
                     }
                 }
             }
