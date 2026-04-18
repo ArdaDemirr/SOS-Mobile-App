@@ -15,6 +15,7 @@ import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.Query
+import java.io.IOException
 
 interface SosApiService {
     // This matches your @PostMapping("/api/users/sync") in UserController
@@ -91,8 +92,26 @@ object RetrofitInstance {
         chain.proceed(requestBuilder.build())
     }
 
+    private val statusInterceptor = Interceptor { chain ->
+        try {
+            val response = chain.proceed(chain.request())
+
+            if (response.isSuccessful || response.code in 400..499) {
+                NetworkStateManager.updateServerState(true)
+            } else if (response.code == 502 || response.code == 503) {
+                NetworkStateManager.updateServerState(false)
+            }
+
+            return@Interceptor response
+        } catch (e: IOException) {
+            NetworkStateManager.updateServerState(false)
+            throw e
+        }
+    }
+
     private val client = OkHttpClient.Builder()
         .addInterceptor(authInterceptor)
+        .addInterceptor(statusInterceptor)
         .build()
 
     val api: SosApiService by lazy {

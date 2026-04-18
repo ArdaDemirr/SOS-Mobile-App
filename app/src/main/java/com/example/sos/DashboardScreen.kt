@@ -14,6 +14,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBox
@@ -386,6 +387,10 @@ fun StatusMonitor() {
     var isCharging     by remember { mutableStateOf(false) }
     var timePerPercent by remember { mutableLongStateOf(prefs.getLong("timePerPercent", 0L)) }
 
+    // --- 1. HOOK INTO THE UNIFIED STATE MANAGER ---
+    val localLinkState by NetworkStateManager.localNetworkStatus.collectAsState()
+    val isServerOnline by NetworkStateManager.isServerOnline.collectAsState()
+
     DisposableEffect(Unit) {
         val receiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context?, intent: Intent?) {
@@ -472,7 +477,20 @@ fun StatusMonitor() {
         batteryLevel < 70 -> PipAmber
         else -> ColorGreen
     }
-    val connColor = if (isConnected) ColorGreen else ColorRed
+
+    // --- 2. MAP NETWORK STATES TO TACTICAL UI COLORS/TEXT ---
+    val (connText, connColor) = when (localLinkState) {
+        LocalLinkStatus.WIFI -> "WI-FI" to ColorGreen
+        LocalLinkStatus.CELL_DATA -> "GSM NET" to ColorCyan
+        LocalLinkStatus.CELL_PLAIN -> "SADECE GSM" to ColorAmber // Orange/Amber warning
+        LocalLinkStatus.DISCONNECTED -> "BAĞLANTI YOK" to ColorRed
+    }
+
+    val (serverText, serverColor) = if (isServerOnline) {
+        "SERVER: ONLINE" to ColorGreen
+    } else {
+        "SERVER: KOPUK" to ColorAmber
+    }
 
     Row(
         modifier = Modifier
@@ -522,32 +540,45 @@ fun StatusMonitor() {
                 .background(ColorBorder)
         )
 
-        // RIGHT: Signal
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(horizontalAlignment = Alignment.End) {
+        // RIGHT: Dual Telemetry (Local + Server)
+        Column(horizontalAlignment = Alignment.End) {
+            // Top Row: Server Status
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = "SINYAL",
-                    color = connColor,
+                    text = serverText,
+                    color = serverColor,
                     fontFamily = FontFamily.Monospace,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 10.sp,
+                    fontSize = 11.sp,
                     letterSpacing = 0.5.sp
                 )
+                Spacer(modifier = Modifier.width(6.dp))
+                Box(
+                    modifier = Modifier
+                        .size(6.dp)
+                        .background(serverColor, CircleShape)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            // Bottom Row: Local Hardware Link
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = connectionType,
+                    text = connText,
                     color = connColor,
                     fontFamily = FontFamily.Monospace,
                     fontWeight = FontWeight.ExtraBold,
                     fontSize = 13.sp
                 )
+                Spacer(modifier = Modifier.width(6.dp))
+                Icon(
+                    if (localLinkState != LocalLinkStatus.DISCONNECTED) Icons.Default.Info else Icons.Default.Warning,
+                    contentDescription = null,
+                    tint = connColor,
+                    modifier = Modifier.size(14.dp)
+                )
             }
-            Spacer(modifier = Modifier.width(8.dp))
-            Icon(
-                if (isConnected) Icons.Default.Info else Icons.Default.Warning,
-                contentDescription = null,
-                tint = connColor,
-                modifier = Modifier.size(18.dp)
-            )
         }
     }
 }
