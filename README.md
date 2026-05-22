@@ -22,7 +22,7 @@ An offline-first, defense-grade emergency communication network and survival sui
 
 ## Screenshots
 
-<img width="945" height="2048" alt="1" src="https://github.com/user-attachments/assets/9d7433de-b06f-48a0-9281-749c368d604c" />
-
-<img width="945" height="2048" alt="2" src="https://github.com/user-attachments/assets/fc074da3-161e-4d43-8f84-8009a1ec933a" />
-
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/9d7433de-b06f-48a0-9281-749c368d604c" width="250" />
+  <img src="https://github.com/user-attachments/assets/fc074da3-161e-4d43-8f84-8009a1ec933a" width="250" /> 
+</p>
